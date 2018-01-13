@@ -36,21 +36,24 @@ public:
     void setInputStream(QTextStream & in);
     void setOutputStream(QTextStream & out);
     void useDefaultStyle(bool used = true);
-    void setUnbuffered(bool unbuffered = true);
+    void enableBuffer(bool isUnbuffered = true);
+    void enableTraceName(bool withTraceName = true);
 
     void highlight();
 
 protected:
-    void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) Q_DECL_OVERRIDE;
+    void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
 
 private:
-  QTextStream * m_out;
-  QTextStream * m_in;
+  QTextStream * m_out = nullptr;
+  QTextStream * m_in = nullptr;
   QString m_currentLine;
   QString m_defautStyle;
-  bool m_useDefaultStyle;
-  bool m_isUnbuffered;
+  bool m_useDefaultStyle = false;
+  bool m_isBuffered = true;
+  bool m_enableTraceName = false;
 };
+
 }
 
 #endif // KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H

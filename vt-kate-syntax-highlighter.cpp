@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("vt-kate-syntax-highlighter"));
     QCoreApplication::setOrganizationName(QStringLiteral("Jonathan Poelen"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.0.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.0.1"));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(app.translate("SyntaxHighlightingCLI", "Command line syntax highlighter using Kate syntax definitions."));
@@ -72,6 +72,10 @@ int main(int argc, char **argv)
     QCommandLineOption useDefaultStyle(QStringList() << QStringLiteral("d") << QStringLiteral("default-style"),
                                  app.translate("SyntaxHighlightingCLI", "Use default color style."));
     parser.addOption(useDefaultStyle);
+
+    QCommandLineOption enableTraceName(QStringList() << QStringLiteral("n") << QStringLiteral("named"),
+                                 app.translate("SyntaxHighlightingCLI", "Add the format name on each color."));
+    parser.addOption(enableTraceName);
 
     QCommandLineOption unbuffered(QStringList() << QStringLiteral("u") << QStringLiteral("unbuffered"),
                                  app.translate("SyntaxHighlightingCLI", "Flush on each line."));
@@ -158,12 +162,9 @@ int main(int argc, char **argv)
     highlighter.setOutputStream(out);
     highlighter.setDefinition(def);
     highlighter.setTheme(repo.theme(parser.value(themeName)));
-    if (parser.isSet(useDefaultStyle)) {
-        highlighter.useDefaultStyle();
-    }
-    if (parser.isSet(unbuffered)) {
-        highlighter.setUnbuffered();
-    }
+    highlighter.useDefaultStyle(parser.isSet(useDefaultStyle));
+    highlighter.enableBuffer(!parser.isSet(unbuffered));
+    highlighter.enableTraceName(parser.isSet(enableTraceName));
 
     highlighter.highlight();
 

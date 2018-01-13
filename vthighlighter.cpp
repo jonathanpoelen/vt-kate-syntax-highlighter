@@ -30,15 +30,8 @@
 using namespace VtSyntaxHighlighting;
 using namespace KSyntaxHighlighting;
 
-VtHighlighter::VtHighlighter()
-    : m_useDefaultStyle(false)
-    , m_isUnbuffered(false)
-{
-}
-
-VtHighlighter::~VtHighlighter()
-{
-}
+VtHighlighter::VtHighlighter() = default;
+VtHighlighter::~VtHighlighter() = default;
 
 void VtHighlighter::setInputStream(QTextStream & in)
 {
@@ -55,9 +48,14 @@ void VtHighlighter::useDefaultStyle(bool used)
     m_useDefaultStyle = used;
 }
 
-void VtHighlighter::setUnbuffered(bool isUnbuffered)
+void VtHighlighter::enableBuffer(bool isBuffered)
 {
-    m_isUnbuffered = isUnbuffered;
+    m_isBuffered = isBuffered;
+}
+
+void VtHighlighter::enableTraceName(bool withTraceName)
+{
+    m_enableTraceName = withTraceName;
 }
 
 void VtHighlighter::highlight()
@@ -87,8 +85,8 @@ void VtHighlighter::highlight()
     while (!m_in->atEnd()) {
         m_currentLine = m_in->readLine();
         state = highlightLine(m_currentLine, state);
-        *m_out << "\n";
-        if (m_isUnbuffered) {
+        *m_out << '\n';
+        if (!m_isBuffered) {
             m_out->flush();
         }
     }
@@ -96,29 +94,38 @@ void VtHighlighter::highlight()
 
 void VtHighlighter::applyFormat(int offset, int length, const Format& format)
 {
-    if (!format.isDefaultTextStyle(theme())) {
+    auto&& current_theme = theme();
+    bool isDefaultTextStyle = format.isDefaultTextStyle(current_theme);
+
+    if (!isDefaultTextStyle) {
         *m_out << "\x1b[";
-        if (format.hasTextColor(theme())) {
-            QColor color = format.textColor(theme());
-            *m_out << ";38;2;" << color.red() << ";" << color.green() << ";" << color.blue();
+        if (format.hasTextColor(current_theme)) {
+            QColor color = format.textColor(current_theme);
+            *m_out << ";38;2;" << color.red() << ';' << color.green() << ';' << color.blue();
         }
-        if (format.hasBackgroundColor(theme())) {
-            QColor color = format.backgroundColor(theme());
-            *m_out << ";48;2;" << color.red() << ";" << color.green() << ";" << color.blue();
+        if (format.hasBackgroundColor(current_theme)) {
+            QColor color = format.backgroundColor(current_theme);
+            *m_out << ";48;2;" << color.red() << ';' << color.green() << ';' << color.blue();
         }
-        if (format.isBold(theme()))
+        if (format.isBold(current_theme))
             *m_out << ";1";
-        if (format.isItalic(theme()))
+        if (format.isItalic(current_theme))
             *m_out << ";3";
-        if (format.isUnderline(theme()))
+        if (format.isUnderline(current_theme))
             *m_out << ";4";
-        if (format.isStrikeThrough(theme()))
+        if (format.isStrikeThrough(current_theme))
             *m_out << ";9";
-        *m_out << "m";
+
+        if (m_enableTraceName) {
+            *m_out << ";7m"; // inverse
+            *m_out << format.name();
+            *m_out << "\x1b[27"; // reset inverse
+        }
+        *m_out << 'm';
     }
 
     *m_out << m_currentLine.mid(offset, length);
 
-    if (!format.isDefaultTextStyle(theme()))
+    if (!isDefaultTextStyle)
         *m_out << m_defautStyle;
 }
