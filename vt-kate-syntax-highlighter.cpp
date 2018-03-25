@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     parser.addOption(listThemes);
 
     QCommandLineOption outputName(QStringList() << QStringLiteral("o") << QStringLiteral("output"),
-                                  app.translate("SyntaxHighlightingCLI", "File to write HTML output to (default: stdout)."),
+                                  app.translate("SyntaxHighlightingCLI", "File to write ANSI output to (default: stdout)."),
                                   app.translate("SyntaxHighlightingCLI", "output"));
     parser.addOption(outputName);
 
@@ -86,7 +86,11 @@ int main(int argc, char **argv)
     Repository repo;
     if (parser.isSet(listDefs)) {
         foreach (const auto &def, repo.definitions()) {
-            std::cout << qPrintable(def.name()) << std::endl;
+            std::cout << qPrintable(def.name()) << "  --";
+            for (auto&& extension : def.extensions()) {
+                std::cout << ' ' << qPrintable(extension);
+            }
+            std::cout << std::endl;
         }
         return 0;
     }
