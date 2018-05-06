@@ -117,11 +117,14 @@ void VtHighlighter::applyFormat(int offset, int length, const Format& format)
             *m_out << ";9";
 
         if (m_enableTraceName) {
-            *m_out << ";7m"; // inverse
-            *m_out << format.name();
-            *m_out << "\x1b[27"; // reset inverse
+            // inverse color name
+            *m_out << ";7m" << format.name() << "\x1b[27";
         }
         *m_out << 'm';
+    }
+    else if (m_enableTraceName) {
+        // inverse color name
+        *m_out << "\x1b[7m" << format.name() << "\x1b[27m";
     }
 
     *m_out << m_currentLine.mid(offset, length);
