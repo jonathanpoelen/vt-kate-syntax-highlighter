@@ -11,7 +11,7 @@ This is a simple highlighted text rendering to Vt100 based of the [Kate syntax h
 
 ```bash
 mkdir bin && cd bin
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake CXXFLAGS=-flto LDFLAGS=-flto -DCMAKE_BUILD_TYPE=Release ..
 make -j2
 ```
 
@@ -25,9 +25,9 @@ make -j2
   > ${KDE_DATA_PATH}/org.kde.syntax-highlighting/themes/my.theme
 ```
 
-- `${KATE_SYNTAX_HIGHLIGHTING_RC}`: Can be omitted, by default `$HOME/.config/katesyntaxhighlightingrc`.
+- `${KATE_SYNTAX_HIGHLIGHTING_RC}`: Can be omitted, by default `~/.config/katesyntaxhighlightingrc`.
 - `${HL_THEME}`: A theme in [KSyntaxHighlighter project](https://phabricator.kde.org/source/syntax-highlighting/browse/master/data/themes/).
-- `${KDE_DATA_PATH}`: The KDE data directory. Candidats listed by `qtpaths --paths GenericDataLocation` command.
+- `${KDE_DATA_PATH}`: The KDE data directory. Candidats listed by `qtpaths --paths GenericDataLocation` command. Usually `~/.local/share`, configurable with the environment variable `$XDG_DATA_DIRS`.
 
 Note: For renamed the theme, open my.theme, search and replace `"My"` with what you want. (Use `json_pp` to format the source `json_pp < infile > outfile`).
 
@@ -37,18 +37,24 @@ Note: `./mergetheme.lua` requires `lua` and `lua-json` package.
 
 ```bash
 D=~/game/org.kde.syntax-highlighting/themes/
-mkdir -p $D
+mkdir -p "$D"
 ./katesyntaxhighlightingrc2themes.sh
 ./mergetheme.lua \
   <(wget -O- https://phabricator.kde.org/file/data/rt2qwxjdmc4iq5aq6mid/PHID-FILE-lnzfavt566nzip4qmcsh/breeze-dark.theme) \
   ./pre-themes/Default\ Item\ Styles\ -\ Schema\ Breeze\ Dark.json \
   ./pre-themes/Highlighting\ *\ -\ Schema\ Breeze\ Dark.json \
-  >$D/my.theme
+  >"$D"/my.theme
 rm -rf ./pre-themes
 ```
 
-Run with `XDG_DATA_DIRS=~/game ./vt-kate-syntax-highlighter -tMy`.
+Run with `XDG_DATA_DIRS=~/game vt-kate-syntax-highlighter -tMy`.
 
+Or create aliases (in your `~/.bashrc`):
+
+```bash
+alias hi='XDG_DATA_DIRS=~/game vt-kate-syntax-highlighter -tMy'
+alias ihi='hi -s'
+```
 
 ## Similar Project
 
