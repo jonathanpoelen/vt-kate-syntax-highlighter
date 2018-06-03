@@ -20,8 +20,12 @@
 
 //#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
 #include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
+#include <KF5/KSyntaxHighlighting/foldingregion.h>
 
 #include <QString>
+
+#include <string>
+
 
 class QTextStream;
 
@@ -38,20 +42,24 @@ public:
     void useDefaultStyle(bool used = true);
     void enableBuffer(bool isUnbuffered = true);
     void enableTraceName(bool withTraceName = true);
+    void enableTraceRegion(bool withTraceRegion = true);
 
     void highlight();
 
 protected:
     void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
+    void applyFolding(int offset, int length, KSyntaxHighlighting::FoldingRegion region) override;
 
 private:
   QTextStream * m_out = nullptr;
   QTextStream * m_in = nullptr;
   QString m_currentLine;
   QString m_defautStyle;
+  std::string m_region;
   bool m_useDefaultStyle = false;
   bool m_isBuffered = true;
   bool m_enableTraceName = false;
+  bool m_enableTraceRegion = false;
 };
 
 }

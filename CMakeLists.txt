@@ -37,7 +37,7 @@ find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED Core)
 set(KF5_MIN_VERSION "5.28.0")
 find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS SyntaxHighlighting)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 set(vt_syntax_highlighting_srcs
     vthighlighter.cpp
