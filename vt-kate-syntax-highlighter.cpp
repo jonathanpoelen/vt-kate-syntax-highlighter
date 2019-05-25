@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 
     if (positionalArguments.size()) {
         inFile.setFileName(positionalArguments.at(0));
-        if (!inFile.open(QFile::ReadOnly | QFile::Truncate)) {
+        if (!inFile.open(QFile::ReadOnly)) {
             std::cerr << "Failed to open input file" << positionalArguments.at(0).toStdString() << ":" << inFile.errorString().toStdString();
             return 3;
         }
