@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addPositionalArgument(app.translate("SyntaxHighlightingCLI", "[source]"),
-                                 app.translate("SyntaxHighlightingCLI", "The source file to highlight."));
+                                 app.translate("SyntaxHighlightingCLI", "The source file to highlight. Otherwise, use stdin and require -s."));
 
     QCommandLineOption listDefs(QStringList() << QStringLiteral("l") << QStringLiteral("list"),
                                 app.translate("SyntaxHighlightingCLI", "List all available syntax definitions."));
@@ -122,9 +122,11 @@ int main(int argc, char **argv)
     } else if (positionalArguments.size()) {
         def = repo.definitionForFileName(positionalArguments.at(0));
     } else {
-        std::cerr << "Missing syntax option." << std::endl;
-        return 1;
+        std::cerr << "Missing syntax option.\n" << std::endl;
+        parser.showHelp(1);
+        // return 1;
     }
+
     if (!def.isValid()) {
         std::cerr << "Unknown syntax." << std::endl;
         return 1;
