@@ -28,6 +28,7 @@
 //#include <QLoggingCategory>
 
 #include <charconv>
+#include <string_view>
 
 
 using namespace VtSyntaxHighlighting;
@@ -56,15 +57,156 @@ void VtHighlighter::enableBuffer(bool isBuffered)
     m_isBuffered = isBuffered;
 }
 
-void VtHighlighter::enableTraceName(bool withTraceName)
+namespace
 {
-    m_enableTraceName = withTraceName;
+    constexpr char const* tb2digits[]{
+        "00", "01", "02", "03", "04", "05", "06", "07", "08", "09",
+        "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
+        "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
+        "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
+        "40", "41", "42", "43", "44", "45", "46", "47", "48", "49",
+        "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
+        "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
+        "70", "71", "72", "73", "74", "75", "76", "77", "78", "79",
+        "80", "81", "82", "83", "84", "85", "86", "87", "88", "89",
+        "90", "91", "92", "93", "94", "95", "96", "97", "98", "99",
+    };
 }
 
-void VtHighlighter::enableTraceRegion(bool withTraceRegion)
+constexpr inline std::size_t vt_rgb_char_size = 3*3+2;
+
+struct MiniBufView
 {
-    m_enableTraceRegion = withTraceRegion;
-}
+#ifndef NDEBUG
+    MiniBufView(char* d, char const* e) noexcept
+    : m_data(d)
+    , m_size(e-d)
+    {}
+
+    template<std::size_t N>
+    MiniBufView(char (&d)[N]) noexcept
+    : m_data(d)
+    , m_size(N)
+    {}
+#else
+    MiniBufView(char* d, [[maybe_unused]] char const* e = nullptr) noexcept
+    : m_data(d)
+    {}
+#endif
+
+    MiniBufView& addColor(QColor const& color) noexcept
+    {
+        assert(m_size - (m_pos - m_data) > std::ptrdiff_t(vt_rgb_char_size));
+
+        auto wc = [&](int x){
+            assert(x <= 255 && x >= 0);
+            if (x > 99) {
+                if (x >= 200) {
+                    *m_pos++ = '2';
+                    x -= 200;
+                }
+                else {
+                    *m_pos++ = '1';
+                    x -= 100;
+                }
+            }
+            else if (x < 10) {
+                *m_pos++ = '0' + x;
+                return ;
+            }
+
+            auto* p = tb2digits[x];
+            *m_pos++ = p[0];
+            *m_pos++ = p[1];
+        };
+
+        wc(color.red());
+        *m_pos++ = ';';
+        wc(color.green());
+        *m_pos++ = ';';
+        wc(color.blue());
+
+        return *this;
+    }
+
+    MiniBufView& copy(char c) noexcept
+    {
+        *m_pos++ = c;
+        return *this;
+    }
+
+    MiniBufView& copy(char const* s) noexcept
+    {
+        auto len = strlen(s);
+        assert(std::size_t(m_pos - m_data) >= len);
+        memcpy(m_pos, s, len);
+        m_pos += len;
+        return *this;
+    }
+
+    char const* data() const noexcept
+    {
+        return m_data;
+    }
+
+    std::ptrdiff_t size() const noexcept
+    {
+        return m_pos - m_data;
+    }
+
+    char* charPos() const noexcept
+    {
+        return m_pos;
+    }
+
+private:
+    char* m_data;
+    char* m_pos = m_data;
+#ifndef NDEBUG
+    std::size_t m_size;
+#endif
+};
+
+template<std::size_t N>
+struct MiniBuf
+{
+    MiniBuf& addColor(QColor const& color) noexcept
+    {
+        m_pos = bufView().addColor(color).charPos();
+        return *this;
+    }
+
+    MiniBuf& copy(char c) noexcept
+    {
+        *m_pos++ = c;
+        return *this;
+    }
+
+    MiniBuf& copy(char const* s) noexcept
+    {
+        m_pos = bufView().copy(s).charPos();
+        return *this;
+    }
+
+    char const* data() const noexcept
+    {
+        return m_data;
+    }
+
+    std::ptrdiff_t size() const noexcept
+    {
+        return m_pos - m_data;
+    }
+
+private:
+    MiniBufView bufView() const noexcept
+    {
+        return MiniBufView(m_pos, m_data + N);
+    }
+
+    char m_data[N];
+    char* m_pos = m_data;
+};
 
 void VtHighlighter::highlight()
 {
@@ -78,15 +220,26 @@ void VtHighlighter::highlight()
         return;
     }
 
+    m_current_theme = theme();
+    m_out_device = m_out->device();
+
     if (m_useDefaultStyle) {
-        QColor fg = theme().textColor(Theme::Normal);
-        QColor bg = theme().backgroundColor(Theme::Normal);
-        m_defautStyle = QStringLiteral("\x1b[0;38;2;%1;%2;%3;48;2;%4;%5;%6m")
-           .arg(fg.red()).arg(fg.green()).arg(fg.blue())
-           .arg(bg.red()).arg(bg.green()).arg(bg.blue());
+        QColor fg = m_current_theme.textColor(Theme::Normal);
+        QColor bg = m_current_theme.backgroundColor(Theme::Normal);
+        m_defautStyleLen = MiniBufView(m_defautStyle)
+            .copy("\x1b[0;38;2;")
+            .addColor(fg)
+            .copy(";48;2;")
+            .addColor(bg)
+            .copy('m')
+            .size()
+        ;
     }
     else {
-        m_defautStyle = QStringLiteral("\x1b[0m");
+        m_defautStyleLen = MiniBufView(m_defautStyle)
+            .copy("\x1b[0m")
+            .size()
+        ;
     }
 
     State state;
@@ -100,65 +253,54 @@ void VtHighlighter::highlight()
     }
 }
 
-enum { RegionNone, RegionBegin = 1, RegionEnd = 2 };
+inline MiniBuf<64> create_vt_theme_buffer(const Format& format, const Theme& theme)
+{
+    MiniBuf<64> buf;
+
+    buf.copy("\x1b[");
+
+    if (format.hasTextColor(theme)) {
+        buf.copy(";38;2;");
+        buf.addColor(format.textColor(theme));
+    }
+
+    if (format.hasBackgroundColor(theme)) {
+        buf.copy(";48;2;");
+        buf.addColor(format.backgroundColor(theme));
+    }
+
+    if (format.isBold(theme))
+        buf.copy(";1");
+    if (format.isItalic(theme))
+        buf.copy(";3");
+    if (format.isUnderline(theme))
+        buf.copy(";4");
+    if (format.isStrikeThrough(theme))
+        buf.copy(";9");
+
+    buf.copy('m');
+
+    return buf;
+}
 
 void VtHighlighter::applyFormat(int offset, int length, const Format& format)
 {
-    auto&& current_theme = theme();
-    bool isDefaultTextStyle = format.isDefaultTextStyle(current_theme);
+    bool isDefaultTextStyle = format.isDefaultTextStyle(m_current_theme);
 
     if (!isDefaultTextStyle) {
-        *m_out << "\x1b[";
-        if (format.hasTextColor(current_theme)) {
-            QColor color = format.textColor(current_theme);
-            *m_out << ";38;2;" << color.red() << ';' << color.green() << ';' << color.blue();
-        }
-        if (format.hasBackgroundColor(current_theme)) {
-            QColor color = format.backgroundColor(current_theme);
-            *m_out << ";48;2;" << color.red() << ';' << color.green() << ';' << color.blue();
-        }
-        if (format.isBold(current_theme))
-            *m_out << ";1";
-        if (format.isItalic(current_theme))
-            *m_out << ";3";
-        if (format.isUnderline(current_theme))
-            *m_out << ";4";
-        if (format.isStrikeThrough(current_theme))
-            *m_out << ";9";
-
-        if (m_enableTraceName) {
-            // inverse color name
-            *m_out << ";7m" << format.name() << "\x1b[27";
-        }
-
-        *m_out << 'm';
-    }
-    else if (m_enableTraceName) {
-        // inverse color name
-        *m_out << "\x1b[7m" << format.name() << "\x1b[27m";
+        auto buf = create_vt_theme_buffer(format, m_current_theme);
+        m_out_device->write(buf.data(), buf.size());
     }
 
-    *m_out << m_currentLine.mid(offset, length);
+    *m_out << m_currentLine.midRef(offset, length);
 
     if (!isDefaultTextStyle)
-        *m_out << m_defautStyle;
-
-    if (m_region.size()) {
-        // inverse color
-        *m_out << "\x1b[7;3m" << m_region.c_str() << "\x1b[27;23m";
-        m_region.clear();
-    }
+        m_out_device->write(m_defautStyle, m_defautStyleLen);
 }
 
 void VtHighlighter::applyFolding(int offset, int length, FoldingRegion region)
 {
     (void)offset;
     (void)length;
-    if (m_enableTraceRegion) {
-        std::array<char, 10> str;
-        auto [p, ec] = std::to_chars(str.data(), str.data() + str.size(), region.id());
-        (void)ec;
-        m_region += std::string_view(str.data(), p - str.data());
-        m_region += (region.type() == FoldingRegion::Begin) ? '(' : ')';
-    }
+    (void)region;
 }

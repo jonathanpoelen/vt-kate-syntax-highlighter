@@ -21,7 +21,6 @@
 //#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
 #include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
 #include <KF5/KSyntaxHighlighting/foldingregion.h>
-#include <KF5/KSyntaxHighlighting/theme.h>
 
 #include <QString>
 
@@ -29,7 +28,6 @@
 
 
 class QTextStream;
-class QIODevice;
 
 namespace VtSyntaxHighlighting {
 
@@ -43,6 +41,8 @@ public:
     void setOutputStream(QTextStream & out);
     void useDefaultStyle(bool used = true);
     void enableBuffer(bool isUnbuffered = true);
+    void enableTraceName(bool withTraceName = true);
+    void enableTraceRegion(bool withTraceRegion = true);
 
     void highlight();
 
@@ -53,13 +53,13 @@ protected:
 private:
   QTextStream * m_out = nullptr;
   QTextStream * m_in = nullptr;
-  QIODevice * m_out_device = nullptr;
-  KSyntaxHighlighting::Theme m_current_theme;
   QString m_currentLine;
-  char m_defautStyle[64];
-  qint64 m_defautStyleLen;
+  QString m_defautStyle;
+  std::string m_region;
   bool m_useDefaultStyle = false;
   bool m_isBuffered = true;
+  bool m_enableTraceName = false;
+  bool m_enableTraceRegion = false;
 };
 
 }

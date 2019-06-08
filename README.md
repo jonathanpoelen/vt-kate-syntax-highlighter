@@ -15,7 +15,30 @@ cmake CXXFLAGS=-flto LDFLAGS=-flto -DCMAKE_BUILD_TYPE=Release ..
 make -j2
 ```
 
-## How to use the Kate's color ?
+## How to use my personal theme?
+
+A custom theme can be used by setting the environment variable `XDG_DATA_DIRS` to a folder that contains `org.kde.syntax-highlighting/themes`. The folder in the repository contains the theme "Breeze Dark" with custom colors for some languages. Syntax files will need to be added manually to a `org.kde.syntax-highlighting/syntax` folder via eg a symlink to your system.
+
+```bash
+ln -s /usr/share/org.kde.syntax-highlighting/syntax org.kde.syntax-highlighting
+```
+
+Run `vt-kate-syntax-highlighter` with `XDG_DATA_DIRS=/path/of/repo vt-kate-syntax-highlighter -t'My Breeze Dark'`.
+
+`My Breeze Dark` refers to the `name` value in the theme file.
+
+You can also create aliases in your `~/.bashrc`:
+
+```bash
+alias hi='XDG_DATA_DIRS=/path/of/repo vt-kate-syntax-highlighter -tMy\ Breeze\ Dark'
+alias ihi='hi -s'
+```
+
+## How to import the Kate's color?
+
+The following commands create a theme from the colors configured in Kate.
+
+(See the previous chapter to configure a theme)
 
 ```bash
 ./katesyntaxhighlightingrc2themes.sh ${KATE_SYNTAX_HIGHLIGHTING_RC}
@@ -45,15 +68,6 @@ mkdir -p "$D"
   ./pre-themes/Highlighting\ *\ -\ Schema\ Breeze\ Dark.json \
   >"$D"/my.theme
 rm -rf ./pre-themes
-```
-
-Run with `XDG_DATA_DIRS=~/game vt-kate-syntax-highlighter -tMy`.
-
-Or create aliases (in your `~/.bashrc`):
-
-```bash
-alias hi='XDG_DATA_DIRS=~/game vt-kate-syntax-highlighter -tMy'
-alias ihi='hi -s'
 ```
 
 ## Similar Project
