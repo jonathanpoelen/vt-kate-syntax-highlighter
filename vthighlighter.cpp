@@ -25,9 +25,9 @@
 
 //#include <QDebug>
 #include <QTextStream>
+#include <QByteArray>
 //#include <QLoggingCategory>
 
-#include <charconv>
 #include <string_view>
 
 
@@ -57,23 +57,6 @@ void VtHighlighter::enableBuffer(bool isBuffered)
     m_isBuffered = isBuffered;
 }
 
-namespace
-{
-    constexpr char const* tb2digits[]{
-        "00", "01", "02", "03", "04", "05", "06", "07", "08", "09",
-        "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
-        "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
-        "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
-        "40", "41", "42", "43", "44", "45", "46", "47", "48", "49",
-        "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
-        "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
-        "70", "71", "72", "73", "74", "75", "76", "77", "78", "79",
-        "80", "81", "82", "83", "84", "85", "86", "87", "88", "89",
-        "90", "91", "92", "93", "94", "95", "96", "97", "98", "99",
-    };
-}
-
-constexpr inline std::size_t vt_rgb_char_size = 3*3+2;
 
 struct MiniBufView
 {
@@ -89,14 +72,14 @@ struct MiniBufView
     , m_size(N)
     {}
 #else
-    MiniBufView(char* d, [[maybe_unused]] char const* e = nullptr) noexcept
+    MiniBufView(char* d, char const* = nullptr) noexcept
     : m_data(d)
     {}
 #endif
 
     MiniBufView& addColor(QColor const& color) noexcept
     {
-        assert(m_size - (m_pos - m_data) > std::ptrdiff_t(vt_rgb_char_size));
+        assert(m_size - (m_pos - m_data) > 3*3+2);
 
         auto wc = [&](int x){
             assert(x <= 255 && x >= 0);
@@ -115,7 +98,19 @@ struct MiniBufView
                 return ;
             }
 
-            auto* p = tb2digits[x];
+            constexpr char const* tb2digits =
+                "xx" "xx" "xx" "xx" "xx" "xx" "xx" "xx" "xx" "xx"
+                "10" "11" "12" "13" "14" "15" "16" "17" "18" "19"
+                "20" "21" "22" "23" "24" "25" "26" "27" "28" "29"
+                "30" "31" "32" "33" "34" "35" "36" "37" "38" "39"
+                "40" "41" "42" "43" "44" "45" "46" "47" "48" "49"
+                "50" "51" "52" "53" "54" "55" "56" "57" "58" "59"
+                "60" "61" "62" "63" "64" "65" "66" "67" "68" "69"
+                "70" "71" "72" "73" "74" "75" "76" "77" "78" "79"
+                "80" "81" "82" "83" "84" "85" "86" "87" "88" "89"
+                "90" "91" "92" "93" "94" "95" "96" "97" "98" "99"
+            ;
+            auto* p = tb2digits + x * 2;
             *m_pos++ = p[0];
             *m_pos++ = p[1];
         };
@@ -129,18 +124,17 @@ struct MiniBufView
         return *this;
     }
 
-    MiniBufView& copy(char c) noexcept
+    MiniBufView& add(char c) noexcept
     {
         *m_pos++ = c;
         return *this;
     }
 
-    MiniBufView& copy(char const* s) noexcept
+    MiniBufView& add(std::string_view sv) noexcept
     {
-        auto len = strlen(s);
-        assert(std::size_t(m_pos - m_data) >= len);
-        memcpy(m_pos, s, len);
-        m_pos += len;
+        assert(std::size_t(m_pos - m_data) >= sv.size());
+        memcpy(m_pos, sv.data(), sv.size());
+        m_pos += sv.size();
         return *this;
     }
 
@@ -176,15 +170,15 @@ struct MiniBuf
         return *this;
     }
 
-    MiniBuf& copy(char c) noexcept
+    MiniBuf& add(char c) noexcept
     {
         *m_pos++ = c;
         return *this;
     }
 
-    MiniBuf& copy(char const* s) noexcept
+    MiniBuf& add(std::string_view sv) noexcept
     {
-        m_pos = bufView().copy(s).charPos();
+        m_pos = bufView().add(sv).charPos();
         return *this;
     }
 
@@ -221,23 +215,22 @@ void VtHighlighter::highlight()
     }
 
     m_current_theme = theme();
-    m_out_device = m_out->device();
 
     if (m_useDefaultStyle) {
         QColor fg = m_current_theme.textColor(Theme::Normal);
         QColor bg = m_current_theme.backgroundColor(Theme::Normal);
         m_defautStyleLen = MiniBufView(m_defautStyle)
-            .copy("\x1b[0;38;2;")
+            .add("\x1b[0;38;2;")
             .addColor(fg)
-            .copy(";48;2;")
+            .add(";48;2;")
             .addColor(bg)
-            .copy('m')
+            .add('m')
             .size()
         ;
     }
     else {
         m_defautStyleLen = MiniBufView(m_defautStyle)
-            .copy("\x1b[0m")
+            .add("\x1b[0m")
             .size()
         ;
     }
@@ -257,28 +250,28 @@ inline MiniBuf<64> create_vt_theme_buffer(const Format& format, const Theme& the
 {
     MiniBuf<64> buf;
 
-    buf.copy("\x1b[");
+    buf.add("\x1b[");
 
     if (format.hasTextColor(theme)) {
-        buf.copy(";38;2;");
+        buf.add("38;2;");
         buf.addColor(format.textColor(theme));
     }
 
     if (format.hasBackgroundColor(theme)) {
-        buf.copy(";48;2;");
+        buf.add(";48;2;");
         buf.addColor(format.backgroundColor(theme));
     }
 
     if (format.isBold(theme))
-        buf.copy(";1");
+        buf.add(";1");
     if (format.isItalic(theme))
-        buf.copy(";3");
+        buf.add(";3");
     if (format.isUnderline(theme))
-        buf.copy(";4");
+        buf.add(";4");
     if (format.isStrikeThrough(theme))
-        buf.copy(";9");
+        buf.add(";9");
 
-    buf.copy('m');
+    buf.add('m');
 
     return buf;
 }
@@ -289,18 +282,11 @@ void VtHighlighter::applyFormat(int offset, int length, const Format& format)
 
     if (!isDefaultTextStyle) {
         auto buf = create_vt_theme_buffer(format, m_current_theme);
-        m_out_device->write(buf.data(), buf.size());
+        *m_out << QByteArray::fromRawData(buf.data(), buf.size());
     }
 
     *m_out << m_currentLine.midRef(offset, length);
 
     if (!isDefaultTextStyle)
-        m_out_device->write(m_defautStyle, m_defautStyleLen);
-}
-
-void VtHighlighter::applyFolding(int offset, int length, FoldingRegion region)
-{
-    (void)offset;
-    (void)length;
-    (void)region;
+        *m_out << QByteArray::fromRawData(m_defautStyle, m_defautStyleLen);
 }

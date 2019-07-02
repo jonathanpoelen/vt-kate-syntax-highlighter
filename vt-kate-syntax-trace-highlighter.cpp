@@ -73,6 +73,14 @@ int main(int argc, char **argv)
                                        app.translate("SyntaxHighlightingCLI", "Use default color style."));
     parser.addOption(useDefaultStyle);
 
+    QCommandLineOption enableTraceName(QStringList() << QStringLiteral("n") << QStringLiteral("named"),
+                                       app.translate("SyntaxHighlightingCLI", "Add the format name on each color."));
+    parser.addOption(enableTraceName);
+
+    QCommandLineOption enableTraceRegion(QStringList() << QStringLiteral("r") << QStringLiteral("region"),
+                                         app.translate("SyntaxHighlightingCLI", "Add region id."));
+    parser.addOption(enableTraceRegion);
+
     QCommandLineOption unbuffered(QStringList() << QStringLiteral("u") << QStringLiteral("unbuffered"),
                                   app.translate("SyntaxHighlightingCLI", "Flush on each line."));
     parser.addOption(unbuffered);
@@ -166,6 +174,8 @@ int main(int argc, char **argv)
     highlighter.setTheme(repo.theme(parser.value(themeName)));
     highlighter.useDefaultStyle(parser.isSet(useDefaultStyle));
     highlighter.enableBuffer(!parser.isSet(unbuffered));
+    highlighter.enableTraceName(parser.isSet(enableTraceName));
+    highlighter.enableTraceRegion(parser.isSet(enableTraceRegion));
 
     highlighter.highlight();
 

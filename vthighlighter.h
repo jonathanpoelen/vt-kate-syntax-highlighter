@@ -48,12 +48,10 @@ public:
 
 protected:
     void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
-    void applyFolding(int offset, int length, KSyntaxHighlighting::FoldingRegion region) override;
 
 private:
   QTextStream * m_out = nullptr;
   QTextStream * m_in = nullptr;
-  QIODevice * m_out_device = nullptr;
   KSyntaxHighlighting::Theme m_current_theme;
   QString m_currentLine;
   char m_defautStyle[64];

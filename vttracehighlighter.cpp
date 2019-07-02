@@ -138,6 +138,8 @@ void VtHighlighter::applyFormat(int offset, int length, const Format& format)
         *m_out << "\x1b[7m" << format.name() << "\x1b[27m";
     }
 
+    // TODO show auto-completion
+
     *m_out << m_currentLine.mid(offset, length);
 
     if (!isDefaultTextStyle)
