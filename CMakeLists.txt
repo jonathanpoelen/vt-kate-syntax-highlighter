@@ -39,18 +39,27 @@ find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS SyntaxHighlighting)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(".")
+
+option(BUILD_VT_TRACE "Build vt-trace options" ON)
+
 set(vt_syntax_highlighting_srcs
-    vthighlighter.cpp
-)
+  vt-kate-syntax-highlighter.cpp
+  vthighlighter.cpp)
+if(${BUILD_VT_TRACE})
+  set(vt_syntax_highlighting_srcs ${vt_syntax_highlighting_srcs} vttracehighlighter.cpp)
+  set_source_files_properties(vt-kate-syntax-highlighter.cpp COMPILE_FLAGS -DBUILD_VT_TRACE=1)
+endif()
+
 # ecm_qt_declare_logging_category(vt_syntax_highlighting_srcs
-#     HEADER vtsyntaxhighlighting_logging.h
-#     IDENTIFIER VtSyntaxHighlighting::Log
-#     CATEGORY_NAME syntaxhighlighting
+#   HEADER vtsyntaxhighlighting_logging.h
+#   IDENTIFIER VtSyntaxHighlighting::Log
+#   CATEGORY_NAME syntaxhighlighting
 # )
 
-add_executable(vt-kate-syntax-highlighter vt-kate-syntax-highlighter.cpp ${vt_syntax_highlighting_srcs})
-set_target_properties(vt-kate-syntax-highlighter PROPERTIES COMPILE_FLAGS -flto)
-set_target_properties(vt-kate-syntax-highlighter PROPERTIES LINK_FLAGS -flto)
+add_executable(vt-kate-syntax-highlighter ${vt_syntax_highlighting_srcs})
+# set_target_properties(vt-kate-syntax-highlighter PROPERTIES COMPILE_FLAGS -flto)
+# set_target_properties(vt-kate-syntax-highlighter PROPERTIES LINK_FLAGS -flto)
 ecm_mark_nongui_executable(vt-kate-syntax-highlighter)
 target_link_libraries(vt-kate-syntax-highlighter KF5::SyntaxHighlighting)
 
@@ -61,7 +70,7 @@ install(TARGETS vt-kate-syntax-highlighter ${INSTALL_TARGETS_DEFAULT_ARGS})
 # Translations
 #
 if (IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/po")
-    ecm_install_po_files_as_qm(po)
+  ecm_install_po_files_as_qm(po)
 endif()
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

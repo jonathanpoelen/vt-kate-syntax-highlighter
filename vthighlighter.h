@@ -15,17 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H
-#define KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H
+#pragma once
 
 //#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
 #include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
-#include <KF5/KSyntaxHighlighting/foldingregion.h>
 #include <KF5/KSyntaxHighlighting/theme.h>
 
 #include <QString>
-
-#include <string>
+#include <QByteArray>
 
 
 class QTextStream;
@@ -36,30 +33,29 @@ namespace VtSyntaxHighlighting {
 class /*KSYNTAXHIGHLIGHTING_EXPORT*/ VtHighlighter : public KSyntaxHighlighting::AbstractHighlighter
 {
 public:
-    VtHighlighter();
-    ~VtHighlighter();
+  VtHighlighter();
+  ~VtHighlighter();
 
-    void setInputStream(QTextStream & in);
-    void setOutputStream(QTextStream & out);
-    void useDefaultStyle(bool used = true);
-    void enableBuffer(bool isUnbuffered = true);
+  void setInputStream(QTextStream & in);
+  void setOutputStream(QTextStream & out);
+  void useDefaultStyle(bool used = true);
+  void enableBuffer(bool isUnbuffered = true);
 
-    void highlight();
+  void highlight();
 
 protected:
-    void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
+  void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
 
-private:
+  void initStyle();
+
   QTextStream * m_out = nullptr;
   QTextStream * m_in = nullptr;
   KSyntaxHighlighting::Theme m_current_theme;
   QString m_currentLine;
-  char m_defautStyle[64];
-  qint64 m_defautStyleLen;
+  QByteArray m_buffer;
+  QString m_defautStyle;
   bool m_useDefaultStyle = false;
   bool m_isBuffered = true;
 };
 
 }
-
-#endif // KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H

@@ -15,53 +15,40 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H
-#define KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H
+#pragma once
 
-//#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
-#include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
+#include "vthighlighter.h"
 #include <KF5/KSyntaxHighlighting/foldingregion.h>
 
-#include <QString>
-
 #include <string>
+#include <vector>
 
 
 class QTextStream;
 
 namespace VtSyntaxHighlighting {
 
-class /*KSYNTAXHIGHLIGHTING_EXPORT*/ VtHighlighter : public KSyntaxHighlighting::AbstractHighlighter
+class /*KSYNTAXHIGHLIGHTING_EXPORT*/ VtTraceHighlighting : public VtHighlighter
 {
 public:
-    VtHighlighter();
-    ~VtHighlighter();
+  VtTraceHighlighting();
+  ~VtTraceHighlighting();
 
-    void setInputStream(QTextStream & in);
-    void setOutputStream(QTextStream & out);
-    void useDefaultStyle(bool used = true);
-    void enableBuffer(bool isUnbuffered = true);
-    void enableTraceName(bool withTraceName = true);
-    void enableTraceRegion(bool withTraceRegion = true);
+  void enableTraceName(bool withTraceName = true);
+  void enableTraceRegion(bool withTraceRegion = true);
 
-    void highlight();
+  void highlight();
 
 protected:
-    void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
-    void applyFolding(int offset, int length, KSyntaxHighlighting::FoldingRegion region) override;
+  void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
+  void applyFolding(int offset, int length, KSyntaxHighlighting::FoldingRegion region) override;
 
-private:
-  QTextStream * m_out = nullptr;
-  QTextStream * m_in = nullptr;
-  QString m_currentLine;
-  QString m_defautStyle;
+  struct Info;
+
   std::string m_region;
-  bool m_useDefaultStyle = false;
-  bool m_isBuffered = true;
+  std::vector<Info> m_infos;
   bool m_enableTraceName = false;
   bool m_enableTraceRegion = false;
 };
 
 }
-
-#endif // KSYNTAXHIGHLIGHTING_VT102HIGHLIGHTER_H
