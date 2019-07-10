@@ -43,10 +43,12 @@ protected:
   void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &format) override;
   void applyFolding(int offset, int length, KSyntaxHighlighting::FoldingRegion region) override;
 
-  struct Info;
+  struct InfoFormat;
+  struct InfoRegion;
 
-  std::string m_region;
-  std::vector<Info> m_infos;
+  QString m_currentFormatedLine;
+  std::vector<InfoFormat> m_formats;
+  std::vector<InfoRegion> m_regions;
   bool m_enableTraceName = false;
   bool m_enableTraceRegion = false;
 };

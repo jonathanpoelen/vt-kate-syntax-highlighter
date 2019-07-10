@@ -52,7 +52,6 @@ protected:
   QTextStream * m_in = nullptr;
   KSyntaxHighlighting::Theme m_current_theme;
   QString m_currentLine;
-  QByteArray m_buffer;
   QString m_defautStyle;
   bool m_useDefaultStyle = false;
   bool m_isBuffered = true;

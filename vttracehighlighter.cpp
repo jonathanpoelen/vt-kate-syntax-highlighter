@@ -43,12 +43,18 @@ namespace
   }
 }
 
-struct VtTraceHighlighting::Info
+struct VtTraceHighlighting::InfoFormat
 {
   int offset;
-  int length;
   QString name;
-  ThemeFormatBuf theme_buffer;
+  QString style;
+};
+
+struct VtTraceHighlighting::InfoRegion
+{
+  int offsetBegin;
+  int offsetEnd;
+  quint16 id;
 };
 
 VtTraceHighlighting::VtTraceHighlighting() = default;
@@ -66,6 +72,26 @@ void VtTraceHighlighting::enableTraceRegion(bool withTraceRegion)
 
 namespace
 {
+  const QString spaceLine = QStringLiteral(
+    "                              "
+    "                              "
+    "                              "
+  );
+  const QString continuationLine = QStringLiteral(
+    "------------------------------"
+    "------------------------------"
+    "------------------------------"
+  );
+
+  void expandLine(QString& s, int n, QString const& fill)
+  {
+    assert(n >= 0);
+    for (; n > int(fill.size()); n -= fill.size()) {
+      s += fill;
+    }
+    s += fill.left(n);
+  }
+
   struct Line
   {
     QString s1;
@@ -108,12 +134,7 @@ namespace
   private:
     static void _expandLine(QString& s, int n)
     {
-      constexpr std::string_view spaces = "                                                   ";
-      assert(n >= 0);
-      for (; n > int(size(spaces)); n -= size(spaces)) {
-        s += spaces.data();
-      }
-      s += spaces.data() + (spaces.size() - n);
+      expandLine(s, n, spaceLine);
     }
   };
 }
@@ -123,11 +144,13 @@ void VtTraceHighlighting::highlight()
   initStyle();
 
   // TODO
-  QString infoStyle = "\x1b[0m";
+  // QString infoStyle = "\x1b[0m";
+  QString infoStyle = "\x1b[0;48;2;34;34;34m";
   // QString nameStyle = "";
   QString nameStyle = "\x1b[7;2m";
-  // QString infoStyle = "\x1b[0;48;2;66;66;66m";
-  QString graph = "\x1b[21;23;24;2m│";
+  QString idStyle = "\x1b[7;3;2m";
+  QString graph = "\x1b[21;23;24;2m|";
+  QString CloseGraph = "\x1b[21;23;24;1m|";
   // QString sep = "\x1b[48;2;66;66;66m────┄┄··\x1b[K\x1b[0m\n";
   QString sep = "\x1b[48;2;66;66;66m────····\x1b[K\x1b[0m\n";
 
@@ -140,34 +163,141 @@ void VtTraceHighlighting::highlight()
     return (p == end(lines)) ? lines.emplace_back() : *p;
   };
 
+  // TODO show auto-completion
+
+  struct OffsetRegion
+  {
+    Line* line;
+    int offset;
+    bool isEnd;
+  };
+
+  std::vector<OffsetRegion> offsetRegions;
+  QString region;
+
   State state;
   while (!m_in->atEnd())
   {
     m_currentLine = m_in->readLine();
+    m_currentFormatedLine.clear();
     state = highlightLine(m_currentLine, state);
-    *m_out << '\n';
 
-    lines.clear();
-    for (Info const& info : m_infos)
+    if (!m_regions.empty())
     {
-      Line& line = selectLine(info.offset);
-      setBuf(m_buffer, info.theme_buffer);
-      line.pushName(info.offset, m_buffer, nameStyle, info.name, infoStyle);
-
-      for (Line* pline = lines.data(); pline <= &line; ++pline)
+      lines.clear();
+      offsetRegions.clear();
+      for (InfoRegion const& info : m_regions)
       {
-        pline->pushGraph(info.offset, m_buffer, graph, infoStyle);
+        region.setNum(info.id);
+        int offset = info.offsetBegin;
+        if (info.offsetBegin >= 0)
+        {
+          region += '(';
+          if (info.offsetEnd >= 0)
+          {
+            int n = info.offsetEnd - info.offsetBegin - region.size();
+            if (n > 0)
+            {
+              expandLine(region, n, continuationLine);
+            }
+            region += ')';
+          }
+          else
+          {
+            offset = info.offsetBegin;
+          }
+        }
+        else if (info.offsetEnd >= 0)
+        {
+          QString tmp = region;
+          int n = info.offsetEnd - region.size();
+          if (n > 0)
+          {
+            region.clear();
+            expandLine(region, n, continuationLine);
+            region += ')';
+            region += tmp;
+          }
+          else
+          {
+            region.prepend(')');
+          }
+          offset = 0;
+        }
+
+        Line& line = selectLine(offset);
+        line.pushName(offset, QString(), idStyle, region, infoStyle);
+
+        if (info.offsetBegin >= 0)
+        {
+          offsetRegions.push_back({&line, info.offsetBegin, false});
+        }
+
+        if (info.offsetEnd >= 0)
+        {
+          offsetRegions.push_back({&line, info.offsetEnd, true});
+        }
       }
+
+      std::sort(offsetRegions.begin(), offsetRegions.end(),
+        [](auto& a, auto& b){
+          return a.offset < b.offset;
+          // if (a.offset < b.offset) return true;
+          // if (a.offset > b.offset) return false;
+          // return a.line > b.line;
+        });
+      // offsetRegions.erase(
+      //   std::unique(offsetRegions.begin(), offsetRegions.end(),
+      //     [](auto& a, auto& b){ return a.offset == b.offset; }),
+      //   offsetRegions.end());
+
+      for (OffsetRegion const& info : offsetRegions)
+      {
+        for (Line* pline = lines.data(); pline <= info.line; ++pline)
+        {
+          pline->pushGraph(info.offset, QString(),
+            info.isEnd ? CloseGraph : graph, infoStyle);
+        }
+      }
+
+      *m_out << infoStyle;
+      auto p = lines.rbegin();
+      *m_out << p->s2 << "\x1b[K\n" << p->s1 << infoStyle;
+      for (auto pend = lines.rend(); ++p != pend;)
+      {
+        *m_out << "\x1b[K\n" << p->s2 << "\x1b[K\n" << p->s1 << infoStyle;
+      }
+      *m_out << "\x1b[K\x1b[0m\n";
+
+      m_regions.clear();
     }
 
-    *m_out << infoStyle;
-    for (Line& line : lines)
+    *m_out << m_currentFormatedLine << "\x1b[0m\n";
+
+    if (!m_formats.empty())
     {
-      *m_out << line.s1 << '\n' << line.s2 << '\n';
-    }
-    *m_out << sep;
+      lines.clear();
+      for (InfoFormat const& info : m_formats)
+      {
+        Line& line = selectLine(info.offset);
+        line.pushName(info.offset, info.style, nameStyle, info.name, infoStyle);
 
-    m_infos.clear();
+        for (Line* pline = lines.data(); pline <= &line; ++pline)
+        {
+          pline->pushGraph(info.offset, info.style, graph, infoStyle);
+        }
+      }
+
+      *m_out << infoStyle;
+      for (Line& line : lines)
+      {
+        *m_out << line.s1 << "\x1b[K\n" << line.s2 << "\x1b[K\n";
+      }
+
+      m_formats.clear();
+    }
+
+    *m_out << sep;
 
     if (!m_isBuffered)
     {
@@ -184,51 +314,66 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
   if (!isDefaultTextStyle)
   {
     auto buf = create_vt_theme_buffer(format, m_current_theme);
-    *m_out << setBuf(m_buffer, buf);
+    buf.add('\0');
+    m_currentFormatedLine += buf.data();
     if (m_enableTraceName)
     {
-      m_infos.push_back(Info{offset, length, format.name(), buf});
+      m_formats.push_back(InfoFormat{offset, format.name(), buf.data()});
     }
   }
   else if (m_enableTraceName)
   {
-    m_infos.push_back(Info{offset, length, format.name(), {}});
+    m_formats.push_back(InfoFormat{offset, format.name(), {}});
   }
 
-  // if (m_enableTraceName)
-  // {
-  //   // inverse color name
-  //   *m_out << "\x1b[7m" << format.name() << "\x1b[27m";
-  // }
-
-  // TODO show auto-completion
-
-  *m_out << m_currentLine.mid(offset, length);
+  m_currentFormatedLine += m_currentLine.mid(offset, length);
 
   if (!isDefaultTextStyle)
   {
-    *m_out << m_defautStyle;
-  }
-
-  if (m_region.size())
-  {
-    // reverse color
-    *m_out << "\x1b[7;3m" << m_region.c_str() << "\x1b[27;23m";
-    m_region.clear();
+    m_currentFormatedLine += m_defautStyle;
   }
 }
 
-void VtTraceHighlighting::applyFolding(int offset, int length, FoldingRegion region)
+void VtTraceHighlighting::applyFolding(int offset, int /*length*/, FoldingRegion region)
 {
-  (void)offset;
-  (void)length;
   if (m_enableTraceRegion)
   {
-    std::array<char, 10> str;
-    auto [p, ec] = std::to_chars(str.data(), str.data() + str.size(), region.id());
-    (void)ec;
-    auto len = p - str.data();
-    str[len] = (region.type() == FoldingRegion::Begin) ? '(' : ')';
-    m_region.append(str.data(), len + 1);
+    auto id = region.id();
+
+    if (region.type() == FoldingRegion::End)
+    {
+      auto it = m_regions.rbegin();
+      auto eit = m_regions.rend();
+      for (int depth = 0; it != eit; ++it)
+      {
+        if (it->id == id)
+        {
+          if (it->offsetBegin >= 0 && it->offsetEnd < 0)
+          {
+            if (--depth < 0)
+            {
+              break;
+            }
+          }
+          else if (it->offsetBegin < 0 && it->offsetEnd >= 0)
+          {
+            ++depth;
+          }
+        }
+      }
+
+      if (it != eit)
+      {
+        it->offsetEnd += offset + 1;
+      }
+      else
+      {
+        m_regions.push_back(InfoRegion{-1, offset, id});
+      }
+    }
+    else
+    {
+      m_regions.push_back(InfoRegion{offset, -1, id});
+    }
   }
 }

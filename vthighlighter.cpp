@@ -121,7 +121,8 @@ void VtHighlighter::applyFormat(int offset, int length, const Format& format)
   if (!isDefaultTextStyle)
   {
     auto buf = create_vt_theme_buffer(format, m_current_theme);
-    *m_out << m_buffer.setRawData(buf.data(), buf.size());
+    buf.add('\0');
+    *m_out << buf.data();
   }
 
   *m_out << m_currentLine.midRef(offset, length);
