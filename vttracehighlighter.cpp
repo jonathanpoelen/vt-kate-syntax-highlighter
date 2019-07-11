@@ -34,41 +34,6 @@
 using namespace VtSyntaxHighlighting;
 using namespace KSyntaxHighlighting;
 
-namespace
-{
-  template<std::size_t N>
-  QByteArray& setBuf(QByteArray& a, MiniBuf<N> const& buf)
-  {
-    return a.setRawData(buf.data(), buf.size());
-  }
-}
-
-struct VtTraceHighlighting::InfoFormat
-{
-  int offset;
-  QString name;
-  QString style;
-};
-
-struct VtTraceHighlighting::InfoRegion
-{
-  int offsetBegin;
-  int offsetEnd;
-  quint16 id;
-};
-
-VtTraceHighlighting::VtTraceHighlighting() = default;
-VtTraceHighlighting::~VtTraceHighlighting() = default;
-
-void VtTraceHighlighting::enableTraceName(bool withTraceName)
-{
-  m_enableTraceName = withTraceName;
-}
-
-void VtTraceHighlighting::enableTraceRegion(bool withTraceRegion)
-{
-  m_enableTraceRegion = withTraceRegion;
-}
 
 namespace
 {
@@ -98,6 +63,7 @@ namespace
     QString s2;
     int len1 = 0;
     int len2 = 0;
+    int endNameLen = 0;
 
     template<class T1, class T2, class T3, class T4>
     void pushName(int offset, T1 const& stateStyle, T2 const& nameStyle, T3 const& name, T4 const& infoStyle)
@@ -110,6 +76,7 @@ namespace
       s2 += nameStyle;
       s2 += name;
       s2 += infoStyle;
+      endNameLen = len2;
     };
 
     template<class T1, class T2, class T3>
@@ -139,6 +106,34 @@ namespace
   };
 }
 
+struct VtTraceHighlighting::InfoFormat
+{
+  int offset;
+  QString name;
+  QString style;
+};
+
+struct VtTraceHighlighting::InfoRegion
+{
+  int offset;
+  int bindIndex;
+  quint16 id;
+  bool isEnd;
+};
+
+VtTraceHighlighting::VtTraceHighlighting() = default;
+VtTraceHighlighting::~VtTraceHighlighting() = default;
+
+void VtTraceHighlighting::enableTraceName(bool withTraceName)
+{
+  m_enableTraceName = withTraceName;
+}
+
+void VtTraceHighlighting::enableTraceRegion(bool withTraceRegion)
+{
+  m_enableTraceRegion = withTraceRegion;
+}
+
 void VtTraceHighlighting::highlight()
 {
   initStyle();
@@ -158,22 +153,14 @@ void VtTraceHighlighting::highlight()
 
   auto selectLine = [&](int offset) -> Line& {
     auto p = std::find_if(begin(lines), end(lines), [=](Line const& line) {
-      return line.len2 < offset;
+      return line.endNameLen < offset;
     });
     return (p == end(lines)) ? lines.emplace_back() : *p;
   };
 
   // TODO show auto-completion
 
-  struct OffsetRegion
-  {
-    Line* line;
-    int offset;
-    bool isEnd;
-  };
-
-  std::vector<OffsetRegion> offsetRegions;
-  QString region;
+  QString regionName;
 
   State state;
   while (!m_in->atEnd())
@@ -185,78 +172,77 @@ void VtTraceHighlighting::highlight()
     if (!m_regions.empty())
     {
       lines.clear();
-      offsetRegions.clear();
-      for (InfoRegion const& info : m_regions)
+
+      bool hasOnlyClose = false;
+      for (InfoRegion& info : m_regions)
       {
-        region.setNum(info.id);
-        int offset = info.offsetBegin;
-        if (info.offsetBegin >= 0)
+        if (info.offset < 0)
         {
-          region += '(';
-          if (info.offsetEnd >= 0)
-          {
-            int n = info.offsetEnd - info.offsetBegin - region.size();
-            if (n > 0)
-            {
-              expandLine(region, n, continuationLine);
-            }
-            region += ')';
-          }
-          else
-          {
-            offset = info.offsetBegin;
-          }
-        }
-        else if (info.offsetEnd >= 0)
-        {
-          QString tmp = region;
-          int n = info.offsetEnd - region.size();
+          regionName.setNum(info.id);
+          int n = info.bindIndex - regionName.size();
           if (n > 0)
           {
-            region.clear();
-            expandLine(region, n, continuationLine);
-            region += ')';
-            region += tmp;
+            QString tmp = regionName;
+            regionName.clear();
+            expandLine(regionName, n, continuationLine);
+            regionName += ')';
+            regionName += tmp;
           }
           else
           {
-            region.prepend(')');
+            regionName.prepend(')');
           }
-          offset = 0;
-        }
-
-        Line& line = selectLine(offset);
-        line.pushName(offset, QString(), idStyle, region, infoStyle);
-
-        if (info.offsetBegin >= 0)
-        {
-          offsetRegions.push_back({&line, info.offsetBegin, false});
-        }
-
-        if (info.offsetEnd >= 0)
-        {
-          offsetRegions.push_back({&line, info.offsetEnd, true});
+          Line& line = selectLine(0);
+          line.pushName(0, QString(), idStyle, regionName, infoStyle);
+          hasOnlyClose = true;
+          info.bindIndex = &line - lines.data();
         }
       }
 
-      std::sort(offsetRegions.begin(), offsetRegions.end(),
-        [](auto& a, auto& b){
-          return a.offset < b.offset;
-          // if (a.offset < b.offset) return true;
-          // if (a.offset > b.offset) return false;
-          // return a.line > b.line;
-        });
-      // offsetRegions.erase(
-      //   std::unique(offsetRegions.begin(), offsetRegions.end(),
-      //     [](auto& a, auto& b){ return a.offset == b.offset; }),
-      //   offsetRegions.end());
-
-      for (OffsetRegion const& info : offsetRegions)
+      if (hasOnlyClose)
       {
-        for (Line* pline = lines.data(); pline <= info.line; ++pline)
+        for (Line& line : lines)
         {
-          pline->pushGraph(info.offset, QString(),
-            info.isEnd ? CloseGraph : graph, infoStyle);
+          line.pushGraph(0, QString(), CloseGraph, infoStyle);
+        }
+      }
+
+      for (InfoRegion& info : m_regions)
+      {
+        if (info.offset < 0)
+        {
+          continue;
+        }
+
+        Line * pline;
+        QString* graphStyle;
+
+        regionName.setNum(info.id);
+        if (info.isEnd)
+        {
+          pline = &lines[m_regions[info.bindIndex].bindIndex];
+          graphStyle = &CloseGraph;
+        }
+        else
+        {
+          regionName += '(';
+          if (info.bindIndex >= 0) {
+            int n = m_regions[info.bindIndex].offset - info.offset - regionName.size();
+            if (n > 0)
+            {
+              expandLine(regionName, n, continuationLine);
+            }
+            regionName += ')';
+          }
+          pline = &selectLine(info.offset);
+          pline->pushName(info.offset, QString(), idStyle, regionName, infoStyle);
+          graphStyle = &graph;
+          info.bindIndex = pline - lines.data();
+        }
+
+        for (Line* p = lines.data(); p <= pline; ++p)
+        {
+          p->pushGraph(info.offset, QString(), *graphStyle, infoStyle);
         }
       }
 
@@ -346,34 +332,38 @@ void VtTraceHighlighting::applyFolding(int offset, int /*length*/, FoldingRegion
       auto eit = m_regions.rend();
       for (int depth = 0; it != eit; ++it)
       {
-        if (it->id == id)
+        if (it->id == id && it->bindIndex < 0)
         {
-          if (it->offsetBegin >= 0 && it->offsetEnd < 0)
-          {
-            if (--depth < 0)
-            {
-              break;
-            }
-          }
-          else if (it->offsetBegin < 0 && it->offsetEnd >= 0)
+          if (it->isEnd)
           {
             ++depth;
+          }
+          else if (--depth < 0)
+          {
+            break;
           }
         }
       }
 
       if (it != eit)
       {
-        it->offsetEnd += offset + 1;
+        it->bindIndex = int(m_regions.size());
+        int bindIndex = int(&*it - m_regions.data());
+        m_regions.push_back(InfoRegion{offset, bindIndex, id, true});
       }
       else
       {
-        m_regions.push_back(InfoRegion{-1, offset, id});
+        m_regions.push_back(InfoRegion{-1, offset, id, true});
+        if (offset != 0)
+        {
+          m_regions.push_back(InfoRegion{
+            offset, int(m_regions.size()), id, true});
+        }
       }
     }
     else
     {
-      m_regions.push_back(InfoRegion{offset, -1, id});
+      m_regions.push_back(InfoRegion{offset, -1, id, false});
     }
   }
 }
