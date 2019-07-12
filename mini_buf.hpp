@@ -22,6 +22,8 @@
 #include <cassert>
 #include <cstring>
 
+namespace
+{
 
 struct MiniBufView
 {
@@ -166,32 +168,4 @@ private:
   char m_data[N];
 };
 
-using ThemeFormatBuf = MiniBuf<56>;
-
-inline ThemeFormatBuf create_vt_theme_buffer(const KSyntaxHighlighting::Format& format, const KSyntaxHighlighting::Theme& theme)
-{
-  ThemeFormatBuf buf;
-
-  buf.add("\x1b[");
-
-  if (format.hasTextColor(theme))
-  {
-    buf.add("38;2;");
-    buf.addColor(format.textColor(theme));
-  }
-
-  if (format.hasBackgroundColor(theme))
-  {
-    buf.add(";48;2;");
-    buf.addColor(format.backgroundColor(theme));
-  }
-
-  if (format.isBold(theme)) buf.add(";1");
-  if (format.isItalic(theme)) buf.add(";3");
-  if (format.isUnderline(theme)) buf.add(";4");
-  if (format.isStrikeThrough(theme)) buf.add(";9");
-
-  buf.add('m');
-
-  return buf;
 }

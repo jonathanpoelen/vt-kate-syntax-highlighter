@@ -41,15 +41,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(".")
 
-option(BUILD_VT_TRACE "Build vt-trace options" ON)
+option(BUILD_VT_TRACE "Build vt-trace options" OFF)
 
 set(vt_syntax_highlighting_srcs
   vt-kate-syntax-highlighter.cpp
   vthighlighter.cpp)
+set(vt_trace 0)
 if(${BUILD_VT_TRACE})
   set(vt_syntax_highlighting_srcs ${vt_syntax_highlighting_srcs} vttracehighlighter.cpp)
-  set_source_files_properties(vt-kate-syntax-highlighter.cpp COMPILE_FLAGS -DBUILD_VT_TRACE=1)
+  set(vt_trace 1)
 endif()
+
+set_source_files_properties(vt-kate-syntax-highlighter.cpp COMPILE_FLAGS -DBUILD_VT_TRACE=${vt_trace})
 
 # ecm_qt_declare_logging_category(vt_syntax_highlighting_srcs
 #   HEADER vtsyntaxhighlighting_logging.h

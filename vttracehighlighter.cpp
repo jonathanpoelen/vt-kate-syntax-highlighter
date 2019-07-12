@@ -16,7 +16,6 @@
 */
 
 #include "vttracehighlighter.h"
-#include "theme_buffer.h"
 // #include "vtsyntaxhighlighting_logging.h"
 
 #include <KF5/KSyntaxHighlighting/definition.h>
@@ -25,6 +24,7 @@
 #include <KF5/KSyntaxHighlighting/theme.h>
 
 //#include <QDebug>
+#include <QVector>
 #include <QTextStream>
 //#include <QLoggingCategory>
 
@@ -108,9 +108,9 @@ namespace
 
 struct VtTraceHighlighting::InfoFormat
 {
-  int offset;
   QString name;
-  QString style;
+  int offset;
+  quint16 styleIndex;
 };
 
 struct VtTraceHighlighting::InfoRegion
@@ -266,11 +266,12 @@ void VtTraceHighlighting::highlight()
       for (InfoFormat const& info : m_formats)
       {
         Line& line = selectLine(info.offset);
-        line.pushName(info.offset, info.style, nameStyle, info.name, infoStyle);
+        auto& style = m_styles[info.styleIndex];
+        line.pushName(info.offset, style, nameStyle, info.name, infoStyle);
 
         for (Line* pline = lines.data(); pline <= &line; ++pline)
         {
-          pline->pushGraph(info.offset, info.style, graph, infoStyle);
+          pline->pushGraph(info.offset, style, graph, infoStyle);
         }
       }
 
@@ -294,22 +295,23 @@ void VtTraceHighlighting::highlight()
 
 void VtTraceHighlighting::applyFormat(int offset, int length, const Format& format)
 {
-  auto&& current_theme = theme();
-  bool isDefaultTextStyle = format.isDefaultTextStyle(current_theme);
+  const auto id = format.id();
+  const auto& style = m_styles[id];
+  const bool isDefaultTextStyle = style.isNull();
+
+  if (m_enableTraceName)
+  {
+    m_formats.push_back(InfoFormat{format.name(), offset, id});
+  }
 
   if (!isDefaultTextStyle)
   {
-    auto buf = create_vt_theme_buffer(format, m_current_theme);
-    buf.add('\0');
-    m_currentFormatedLine += buf.data();
-    if (m_enableTraceName)
-    {
-      m_formats.push_back(InfoFormat{offset, format.name(), buf.data()});
-    }
+    *m_out << style;
   }
-  else if (m_enableTraceName)
+
+  if (!isDefaultTextStyle)
   {
-    m_formats.push_back(InfoFormat{offset, format.name(), {}});
+    m_currentFormatedLine += style;
   }
 
   m_currentFormatedLine += m_currentLine.mid(offset, length);
@@ -357,7 +359,7 @@ void VtTraceHighlighting::applyFolding(int offset, int /*length*/, FoldingRegion
         if (offset != 0)
         {
           m_regions.push_back(InfoRegion{
-            offset, int(m_regions.size()), id, true});
+            offset, int(m_regions.size())-1, id, true});
         }
       }
     }

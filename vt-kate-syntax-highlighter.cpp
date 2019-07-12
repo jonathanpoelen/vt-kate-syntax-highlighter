@@ -19,7 +19,7 @@
 # define BUILD_VT_TRACE 1
 #endif
 
-#ifdef BUILD_VT_TRACE
+#if BUILD_VT_TRACE
 # include "vttracehighlighter.h"
 #else
 # include "vthighlighter.h"
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
                                 app.translate("SyntaxHighlightingCLI", "Flush on each line."));
   parser.addOption(unbuffered);
 
-#ifdef BUILD_VT_TRACE
+#if BUILD_VT_TRACE
   QCommandLineOption enableTraceName(QStringList() << QStringLiteral("n") << QStringLiteral("named"),
                                      app.translate("SyntaxHighlightingCLI", "Add the format name on each color."));
   parser.addOption(enableTraceName);
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
   out.setCodec("UTF-8");
   in.setCodec("UTF-8");
 
-#ifdef BUILD_VT_TRACE
+#if BUILD_VT_TRACE
   VtTraceHighlighting trace_highlighter;
   trace_highlighter.enableTraceName(parser.isSet(enableTraceName));
   trace_highlighter.enableTraceRegion(parser.isSet(enableTraceRegion));
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
   highlighter.useDefaultStyle(parser.isSet(useDefaultStyle));
   highlighter.enableBuffer(!parser.isSet(unbuffered));
 
-#ifdef BUILD_VT_TRACE
+#if BUILD_VT_TRACE
   trace_highlighter.highlight();
 #else
   highlighter.highlight();

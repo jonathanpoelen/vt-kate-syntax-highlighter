@@ -16,7 +16,7 @@
 */
 
 #include "vthighlighter.h"
-#include "theme_buffer.h"
+#include "mini_buf.hpp"
 // #include "vtsyntaxhighlighting_logging.h"
 
 #include <KF5/KSyntaxHighlighting/definition.h>
@@ -27,8 +27,7 @@
 //#include <QDebug>
 #include <QTextStream>
 //#include <QLoggingCategory>
-
-#include <string_view>
+#include <QVector>
 
 
 using namespace VtSyntaxHighlighting;
@@ -71,14 +70,62 @@ void VtHighlighter::initStyle()
     return;
   }
 
-  m_current_theme = theme();
+  auto theme = this->theme();
+  auto definition = this->definition();
+  auto formats = definition.formats();
+
+  auto definitions = definition.includedDefinitions();
+  definitions.append(definition);
+
+  m_styles.resize(definitions.size() * 10);
+
+  for (auto&& d : definitions)
+  {
+    for (auto&& format : d.formats())
+    {
+      bool isDefaultTextStyle = format.isDefaultTextStyle(theme);
+
+      if (!isDefaultTextStyle)
+      {
+        MiniBuf<64> buf;
+
+        buf.add("\x1b[");
+
+        if (format.hasTextColor(theme))
+        {
+          buf.add("38;2;");
+          buf.addColor(format.textColor(theme));
+        }
+
+        if (format.hasBackgroundColor(theme))
+        {
+          buf.add(";48;2;");
+          buf.addColor(format.backgroundColor(theme));
+        }
+
+        if (format.isBold(theme)) buf.add(";1");
+        if (format.isItalic(theme)) buf.add(";3");
+        if (format.isUnderline(theme)) buf.add(";4");
+        if (format.isStrikeThrough(theme)) buf.add(";9");
+
+        buf.add('m');
+
+        auto id = format.id();
+        if (id >= m_styles.size())
+        {
+          m_styles.resize(std::max(size_t(id), m_styles.size() * 2u));
+        }
+        m_styles[id].append(buf.data(), buf.size());
+      }
+    }
+  }
 
   MiniBuf<64> defaultStyleBuffer;
 
   if (m_useDefaultStyle)
   {
-    QColor fg = m_current_theme.textColor(Theme::Normal);
-    QColor bg = m_current_theme.backgroundColor(Theme::Normal);
+    QColor fg = theme.textColor(Theme::Normal);
+    QColor bg = theme.backgroundColor(Theme::Normal);
     defaultStyleBuffer
       .add("\x1b[0;38;2;")
       .addColor(fg)
@@ -116,13 +163,12 @@ void VtHighlighter::highlight()
 
 void VtHighlighter::applyFormat(int offset, int length, const Format& format)
 {
-  bool isDefaultTextStyle = format.isDefaultTextStyle(m_current_theme);
+  const auto& style = m_styles[format.id()];
+  const bool isDefaultTextStyle = style.isNull();
 
   if (!isDefaultTextStyle)
   {
-    auto buf = create_vt_theme_buffer(format, m_current_theme);
-    buf.add('\0');
-    *m_out << buf.data();
+    *m_out << style;
   }
 
   *m_out << m_currentLine.midRef(offset, length);

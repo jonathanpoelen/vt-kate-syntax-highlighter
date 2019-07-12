@@ -21,8 +21,10 @@
 #include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
 #include <KF5/KSyntaxHighlighting/theme.h>
 
-#include <QString>
 #include <QByteArray>
+#include <QString>
+
+#include <vector>
 
 
 class QTextStream;
@@ -50,11 +52,13 @@ protected:
 
   QTextStream * m_out = nullptr;
   QTextStream * m_in = nullptr;
-  KSyntaxHighlighting::Theme m_current_theme;
+  std::vector<QByteArray> m_styles;
   QString m_currentLine;
   QString m_defautStyle;
-  bool m_useDefaultStyle = false;
   bool m_isBuffered = true;
+
+private:
+  bool m_useDefaultStyle = false;
 };
 
 }
