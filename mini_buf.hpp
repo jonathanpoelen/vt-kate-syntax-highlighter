@@ -39,9 +39,11 @@ struct MiniBufView
   , m_size(N)
   {}
 #else
-  MiniBufView(char* d, int n = -1) noexcept
+  MiniBufView(char* d, int n) noexcept
   : m_data(d)
-  {}
+  {
+    (void)n;
+  }
 #endif
 
   MiniBufView& addColor(QColor const& color) noexcept
