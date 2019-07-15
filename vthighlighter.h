@@ -18,8 +18,8 @@
 #pragma once
 
 //#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
-#include <KF5/KSyntaxHighlighting/abstracthighlighter.h>
-#include <KF5/KSyntaxHighlighting/theme.h>
+#include <ksyntax-highlighting/src/lib/abstracthighlighter.h>
+#include <ksyntax-highlighting/src/lib/theme.h>
 
 #include <QByteArray>
 #include <QString>
@@ -54,7 +54,7 @@ protected:
   QTextStream * m_in = nullptr;
   std::vector<QByteArray> m_styles;
   QString m_currentLine;
-  QString m_defautStyle;
+  QByteArray m_defautStyle;
   bool m_isBuffered = true;
 
 private:

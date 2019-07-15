@@ -18,7 +18,7 @@
 #pragma once
 
 #include "vthighlighter.h"
-#include <KF5/KSyntaxHighlighting/foldingregion.h>
+#include <ksyntax-highlighting/src/lib/foldingregion.h>
 
 #include <string>
 #include <vector>

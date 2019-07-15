@@ -133,7 +133,7 @@ int main(int argc, char **argv)
     def = repo.definitionForName(syntax);
     if (!def.isValid())
     {
-      def = repo.definitionForFileName("f."+syntax);
+      def = repo.definitionForFileName(QLatin1String("f.")+syntax);
       if (!def.isValid())
       {
         def = repo.definitionForFileName(syntax);

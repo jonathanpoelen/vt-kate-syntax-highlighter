@@ -19,10 +19,10 @@
 #include "mini_buf.hpp"
 // #include "vtsyntaxhighlighting_logging.h"
 
-#include <KF5/KSyntaxHighlighting/definition.h>
-#include <KF5/KSyntaxHighlighting/format.h>
-#include <KF5/KSyntaxHighlighting/state.h>
-#include <KF5/KSyntaxHighlighting/theme.h>
+#include <ksyntax-highlighting/src/lib/definition.h>
+#include <ksyntax-highlighting/src/lib/format.h>
+#include <ksyntax-highlighting/src/lib/state.h>
+#include <ksyntax-highlighting/src/lib/theme.h>
 
 //#include <QDebug>
 #include <QTextStream>
@@ -141,7 +141,7 @@ void VtHighlighter::initStyle()
     ;
   }
 
-  m_defautStyle = defaultStyleBuffer.add('\0').data();
+  m_defautStyle = defaultStyleBuffer.to<QByteArray>();
 }
 
 void VtHighlighter::highlight()

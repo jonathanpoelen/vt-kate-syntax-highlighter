@@ -160,6 +160,12 @@ struct MiniBuf
     return m_pos;
   }
 
+  template<class T>
+  T to() const noexcept(noexcept(T(&*"", 0)))
+  {
+    return T(data(), size());
+  }
+
 private:
   MiniBufView bufView() noexcept
   {

@@ -18,10 +18,12 @@
 #include "vttracehighlighter.h"
 // #include "vtsyntaxhighlighting_logging.h"
 
-#include <KF5/KSyntaxHighlighting/definition.h>
-#include <KF5/KSyntaxHighlighting/format.h>
-#include <KF5/KSyntaxHighlighting/state.h>
-#include <KF5/KSyntaxHighlighting/theme.h>
+#include <ksyntax-highlighting/src/lib/definition.h>
+#include <ksyntax-highlighting/src/lib/format.h>
+#include <ksyntax-highlighting/src/lib/state.h>
+#include <ksyntax-highlighting/src/lib/theme.h>
+#include <ksyntax-highlighting/src/lib/state_p.h>
+#include <ksyntax-highlighting/src/lib/context_p.h>
 
 //#include <QDebug>
 #include <QVector>
@@ -104,6 +106,11 @@ namespace
       expandLine(s, n, spaceLine);
     }
   };
+
+  QLatin1String toLatin1(QByteArray const& a) noexcept
+  {
+    return QLatin1String(a.data(), a.size());
+  }
 }
 
 struct VtTraceHighlighting::InfoFormat
@@ -139,15 +146,15 @@ void VtTraceHighlighting::highlight()
   initStyle();
 
   // TODO
-  // QString infoStyle = "\x1b[0m";
-  QString infoStyle = "\x1b[0;48;2;34;34;34m";
-  // QString nameStyle = "";
-  QString nameStyle = "\x1b[7;2m";
-  QString idStyle = "\x1b[7;3;2m";
-  QString graph = "\x1b[21;23;24;2m|";
-  QString CloseGraph = "\x1b[21;23;24;1m|";
-  // QString sep = "\x1b[48;2;66;66;66m────┄┄··\x1b[K\x1b[0m\n";
-  QString sep = "\x1b[48;2;66;66;66m────····\x1b[K\x1b[0m\n";
+  // QString infoStyle = QStringLiteral("\x1b[0m");
+  QString infoStyle = QStringLiteral("\x1b[0;48;2;34;34;34m");
+  // QString nameStyle = QStringLiteral("");
+  QString nameStyle = QStringLiteral("\x1b[7;2m");
+  QString idStyle = QStringLiteral("\x1b[7;3;2m");
+  QString graph = QStringLiteral("\x1b[21;23;24;2m|");
+  QString CloseGraph = QStringLiteral("\x1b[21;23;24;1m|");
+  // QString sep = QStringLiteral("\x1b[48;2;66;66;66m────┄┄··\x1b[K\x1b[0m\n");
+  QString sep = QStringLiteral("\x1b[48;2;66;66;66m────····\x1b[K\x1b[0m\n");
 
   std::vector<Line> lines;
 
@@ -159,6 +166,7 @@ void VtTraceHighlighting::highlight()
   };
 
   // TODO show auto-completion
+  // TODO name to top and bottom if region is disabled
 
   QString regionName;
 
@@ -168,6 +176,11 @@ void VtTraceHighlighting::highlight()
     m_currentLine = m_in->readLine();
     m_currentFormatedLine.clear();
     state = highlightLine(m_currentLine, state);
+
+    auto stateData = StateData::get(state);
+
+    *m_out << "Ctx: " << stateData->topContext()->name() << "\n";
+
 
     if (!m_regions.empty())
     {
@@ -185,12 +198,12 @@ void VtTraceHighlighting::highlight()
             QString tmp = regionName;
             regionName.clear();
             expandLine(regionName, n, continuationLine);
-            regionName += ')';
+            regionName += QLatin1Char(')');
             regionName += tmp;
           }
           else
           {
-            regionName.prepend(')');
+            regionName.prepend(QLatin1Char(')'));
           }
           Line& line = selectLine(0);
           line.pushName(0, QString(), idStyle, regionName, infoStyle);
@@ -225,14 +238,14 @@ void VtTraceHighlighting::highlight()
         }
         else
         {
-          regionName += '(';
+          regionName += QLatin1Char('(');
           if (info.bindIndex >= 0) {
             int n = m_regions[info.bindIndex].offset - info.offset - regionName.size();
             if (n > 0)
             {
               expandLine(regionName, n, continuationLine);
             }
-            regionName += ')';
+            regionName += QLatin1Char(')');
           }
           pline = &selectLine(info.offset);
           pline->pushName(info.offset, QString(), idStyle, regionName, infoStyle);
@@ -266,7 +279,7 @@ void VtTraceHighlighting::highlight()
       for (InfoFormat const& info : m_formats)
       {
         Line& line = selectLine(info.offset);
-        auto& style = m_styles[info.styleIndex];
+        auto style = toLatin1(m_styles[info.styleIndex]);
         line.pushName(info.offset, style, nameStyle, info.name, infoStyle);
 
         for (Line* pline = lines.data(); pline <= &line; ++pline)
@@ -311,14 +324,14 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
 
   if (!isDefaultTextStyle)
   {
-    m_currentFormatedLine += style;
+    m_currentFormatedLine += toLatin1(style);
   }
 
   m_currentFormatedLine += m_currentLine.mid(offset, length);
 
   if (!isDefaultTextStyle)
   {
-    m_currentFormatedLine += m_defautStyle;
+    m_currentFormatedLine += toLatin1(m_defautStyle);
   }
 }
 
