@@ -18,8 +18,8 @@
 #pragma once
 
 //#include <KF5/KSyntaxHighlighting/ksyntaxhighlighting_export.h>
-#include <ksyntax-highlighting/src/lib/abstracthighlighter.h>
-#include <ksyntax-highlighting/src/lib/theme.h>
+#include <KF5/KSyntaxHighlighting/AbstractHighlighter>
+#include <KF5/KSyntaxHighlighting/Theme>
 
 #include <QByteArray>
 #include <QString>

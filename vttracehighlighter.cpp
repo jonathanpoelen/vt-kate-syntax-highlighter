@@ -18,12 +18,15 @@
 #include "vttracehighlighter.h"
 // #include "vtsyntaxhighlighting_logging.h"
 
-#include <ksyntax-highlighting/src/lib/definition.h>
-#include <ksyntax-highlighting/src/lib/format.h>
-#include <ksyntax-highlighting/src/lib/state.h>
-#include <ksyntax-highlighting/src/lib/theme.h>
-#include <ksyntax-highlighting/src/lib/state_p.h>
-#include <ksyntax-highlighting/src/lib/context_p.h>
+#include <KF5/KSyntaxHighlighting/Definition>
+#include <KF5/KSyntaxHighlighting/Format>
+#include <KF5/KSyntaxHighlighting/State>
+#include <KF5/KSyntaxHighlighting/Theme>
+
+# if BUILD_VT_TRACE_CONTEXT
+# include <ksyntax-highlighting/src/lib/state_p.h>
+# include <ksyntax-highlighting/src/lib/context_p.h>
+#endif
 
 //#include <QDebug>
 #include <QVector>
@@ -131,15 +134,22 @@ struct VtTraceHighlighting::InfoRegion
 VtTraceHighlighting::VtTraceHighlighting() = default;
 VtTraceHighlighting::~VtTraceHighlighting() = default;
 
-void VtTraceHighlighting::enableTraceName(bool withTraceName)
+void VtTraceHighlighting::enableNameTrace(bool withName)
 {
-  m_enableTraceName = withTraceName;
+  m_enableNameTrace = withName;
 }
 
-void VtTraceHighlighting::enableTraceRegion(bool withTraceRegion)
+void VtTraceHighlighting::enableRegionTrace(bool withRegion)
 {
-  m_enableTraceRegion = withTraceRegion;
+  m_enableRegionTrace = withRegion;
 }
+
+#if BUILD_VT_TRACE_CONTEXT
+void VtTraceHighlighting::enableContextTrace(bool withContext)
+{
+  m_enableContextTrace = withContext;
+}
+#endif
 
 void VtTraceHighlighting::highlight()
 {
@@ -170,19 +180,15 @@ void VtTraceHighlighting::highlight()
 
   QString regionName;
 
-  State state;
   while (!m_in->atEnd())
   {
     m_currentLine = m_in->readLine();
     m_currentFormatedLine.clear();
-    state = highlightLine(m_currentLine, state);
+    m_state = highlightLine(m_currentLine, m_state);
 
-    auto stateData = StateData::get(state);
+    const bool hasRegion = !m_regions.empty();
 
-    *m_out << "Ctx: " << stateData->topContext()->name() << "\n";
-
-
-    if (!m_regions.empty())
+    if (hasRegion)
     {
       lines.clear();
 
@@ -271,8 +277,6 @@ void VtTraceHighlighting::highlight()
       m_regions.clear();
     }
 
-    *m_out << m_currentFormatedLine << "\x1b[0m\n";
-
     if (!m_formats.empty())
     {
       lines.clear();
@@ -288,13 +292,33 @@ void VtTraceHighlighting::highlight()
         }
       }
 
-      *m_out << infoStyle;
-      for (Line& line : lines)
+      auto it = lines.begin();
+
+      if (!hasRegion)
       {
-        *m_out << line.s1 << "\x1b[K\n" << line.s2 << "\x1b[K\n";
+        *m_out << infoStyle;
+        for (auto middle = lines.begin() + lines.size()/2; it != middle;)
+        {
+          --middle;
+          *m_out << middle->s2 << "\x1b[K\n" << middle->s1 << "\x1b[K\n";
+        }
+
+        it = lines.begin() + lines.size()/2;
+      }
+
+      *m_out << m_defautStyle << m_currentFormatedLine << "\x1b[0m\n";
+
+      *m_out << infoStyle;
+      for (auto end = lines.end(); it != end; ++it)
+      {
+        *m_out << it->s1 << "\x1b[K\n" << it->s2 << "\x1b[K\n";
       }
 
       m_formats.clear();
+    }
+    else
+    {
+      *m_out << m_defautStyle << m_currentFormatedLine << "\x1b[0m\n";
     }
 
     *m_out << sep;
@@ -312,10 +336,40 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
   const auto& style = m_styles[id];
   const bool isDefaultTextStyle = style.isNull();
 
-  if (m_enableTraceName)
+#if BUILD_VT_TRACE_CONTEXT
+  if (m_enableNameTrace || m_enableContextTrace)
+  {
+    auto getName = [&]{
+      if (!m_enableContextTrace) {
+        return format.name();
+      }
+
+      QString name = QStringLiteral("[");
+      if (m_enableContextTrace)
+      {
+        auto stateData = StateData::get(m_state);
+        if (!stateData->isEmpty()) {
+          name += stateData->topContext()->name();
+        }
+      }
+      name += QLatin1Char(']');
+
+      if (m_enableNameTrace)
+      {
+        name += format.name();
+      }
+
+      return name;
+    };
+
+    m_formats.push_back(InfoFormat{getName(), offset, id});
+  }
+#else
+  if (m_enableNameTrace)
   {
     m_formats.push_back(InfoFormat{format.name(), offset, id});
   }
+#endif
 
   if (!isDefaultTextStyle)
   {
@@ -337,12 +391,13 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
 
 void VtTraceHighlighting::applyFolding(int offset, int /*length*/, FoldingRegion region)
 {
-  if (m_enableTraceRegion)
+  if (m_enableRegionTrace)
   {
     auto id = region.id();
 
     if (region.type() == FoldingRegion::End)
     {
+      // search open region
       auto it = m_regions.rbegin();
       auto eit = m_regions.rend();
       for (int depth = 0; it != eit; ++it)
@@ -368,6 +423,7 @@ void VtTraceHighlighting::applyFolding(int offset, int /*length*/, FoldingRegion
       }
       else
       {
+        // region without open bindIndex = offset
         m_regions.push_back(InfoRegion{-1, offset, id, true});
         if (offset != 0)
         {

@@ -18,11 +18,15 @@
 #pragma once
 
 #include "vthighlighter.h"
-#include <ksyntax-highlighting/src/lib/foldingregion.h>
+#include <KF5/KSyntaxHighlighting/FoldingRegion>
+#include <KF5/KSyntaxHighlighting/State>
 
 #include <string>
 #include <vector>
 
+#ifndef BUILD_VT_TRACE_CONTEXT
+# define BUILD_VT_TRACE_CONTEXT 0
+#endif
 
 class QTextStream;
 
@@ -34,9 +38,11 @@ public:
   VtTraceHighlighting();
   ~VtTraceHighlighting();
 
-  void enableTraceName(bool withTraceName = true);
-  void enableTraceRegion(bool withTraceRegion = true);
-
+  void enableNameTrace(bool withName = true);
+  void enableRegionTrace(bool withRegion = true);
+#if BUILD_VT_TRACE_CONTEXT
+  void enableContextTrace(bool withContext = true);
+#endif
   void highlight();
 
 protected:
@@ -47,10 +53,14 @@ protected:
   struct InfoRegion;
 
   QString m_currentFormatedLine;
+  KSyntaxHighlighting::State m_state;
   std::vector<InfoFormat> m_formats;
   std::vector<InfoRegion> m_regions;
-  bool m_enableTraceName = false;
-  bool m_enableTraceRegion = false;
+  bool m_enableNameTrace = false;
+  bool m_enableRegionTrace = false;
+#if BUILD_VT_TRACE_CONTEXT
+  bool m_enableContextTrace = false;
+#endif
 };
 
 }

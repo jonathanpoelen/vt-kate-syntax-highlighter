@@ -16,7 +16,7 @@
 */
 
 #ifndef BUILD_VT_TRACE
-# define BUILD_VT_TRACE 1
+# define BUILD_VT_TRACE 0
 #endif
 
 #if BUILD_VT_TRACE
@@ -85,13 +85,19 @@ int main(int argc, char **argv)
   parser.addOption(unbuffered);
 
 #if BUILD_VT_TRACE
-  QCommandLineOption enableTraceName(QStringList() << QStringLiteral("n") << QStringLiteral("named"),
+  QCommandLineOption enableNameTrace(QStringList() << QStringLiteral("n") << QStringLiteral("name"),
                                      app.translate("SyntaxHighlightingCLI", "Add the format name on each color."));
-  parser.addOption(enableTraceName);
+  parser.addOption(enableNameTrace);
 
-  QCommandLineOption enableTraceRegion(QStringList() << QStringLiteral("r") << QStringLiteral("region"),
+  QCommandLineOption enableRegionTrace(QStringList() << QStringLiteral("r") << QStringLiteral("region"),
                                        app.translate("SyntaxHighlightingCLI", "Add region id."));
-  parser.addOption(enableTraceRegion);
+  parser.addOption(enableRegionTrace);
+
+#if BUILD_VT_TRACE_CONTEXT
+  QCommandLineOption enableContextTrace(QStringList() << QStringLiteral("c") << QStringLiteral("context"),
+                                       app.translate("SyntaxHighlightingCLI", "Add context of format."));
+  parser.addOption(enableContextTrace);
+#endif
 #endif
 
   parser.process(app);
@@ -199,8 +205,11 @@ int main(int argc, char **argv)
 
 #if BUILD_VT_TRACE
   VtTraceHighlighting trace_highlighter;
-  trace_highlighter.enableTraceName(parser.isSet(enableTraceName));
-  trace_highlighter.enableTraceRegion(parser.isSet(enableTraceRegion));
+  trace_highlighter.enableNameTrace(parser.isSet(enableNameTrace));
+  trace_highlighter.enableRegionTrace(parser.isSet(enableRegionTrace));
+#if BUILD_VT_TRACE_CONTEXT
+  trace_highlighter.enableContextTrace(parser.isSet(enableContextTrace));
+#endif
   VtHighlighter& highlighter = trace_highlighter;
 #else
   VtHighlighter highlighter;
