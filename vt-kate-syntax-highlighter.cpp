@@ -208,13 +208,12 @@ int main(int argc, char **argv)
   in.setCodec("UTF-8");
 
 #if BUILD_VT_TRACE
-  VtTraceHighlighting trace_highlighter;
-  trace_highlighter.enableNameTrace(parser.isSet(enableNameTrace));
-  trace_highlighter.enableRegionTrace(parser.isSet(enableRegionTrace));
+  VtTraceHighlighting highlighter;
+  highlighter.enableNameTrace(parser.isSet(enableNameTrace));
+  highlighter.enableRegionTrace(parser.isSet(enableRegionTrace));
 #if BUILD_VT_TRACE_CONTEXT
-  trace_highlighter.enableContextTrace(parser.isSet(enableContextTrace));
+  highlighter.enableContextTrace(parser.isSet(enableContextTrace));
 #endif
-  VtHighlighter& highlighter = trace_highlighter;
 #else
   VtHighlighter highlighter;
 #endif
@@ -226,11 +225,7 @@ int main(int argc, char **argv)
   highlighter.useDefaultStyle(parser.isSet(useDefaultStyle));
   highlighter.enableBuffer(!parser.isSet(unbuffered));
 
-#if BUILD_VT_TRACE
-  trace_highlighter.highlight();
-#else
   highlighter.highlight();
-#endif
 
   return 0;
 }

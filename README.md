@@ -1,18 +1,35 @@
 # Ansi Syntax Highlighting
 
+<!-- toc -->
+<!-- /toc -->
+
 This is a simple highlighted text rendering to Vt100 based of the [Kate syntax highlighting engine](https://phabricator.kde.org/source/syntax-highlighting/).
 
 ## Dependencies
 
-- libkf5syntaxhighlighting-dev or libkf5syntaxhighlighting-devel
-- libkf5syntaxhighlighting5
+- KF5SyntaxHighlighting
+
+The package name vary between distributions:
+
+- Arch Linux: `syntax-highlighting` in extra
+- Debian / Ubuntu: `libkf5syntaxhighlighting-dev`
+- Gentoo: `libkf5syntaxhighlighting-devel`
 
 ## Build
 
 ```bash
-mkdir bin && cd bin
-cmake CXXFLAGS=-flto LDFLAGS=-flto -DCMAKE_BUILD_TYPE=Release ..
+mkdir bin &&
+cd bin &&
+cmake -DCMAKE_BUILD_TYPE=Release .. &&
 make -j2
+```
+
+### Enable VtTrace
+
+VtTrace is a mode used to debug KF5SyntaxHighlighting syntax files more easily, it is activated with `-DBUILD_VT_TRACE=ON`. To display the current context, add `-DBUILD_VT_TRACE_CONTEXT=1` and make a symbolic link from `ksyntax-highlighting` to the official KF5SyntaxHighlighting sources or clone the repository directly.
+
+```bash
+git clone git://anongit.kde.org/syntax-highlighting ksyntax-highlighting
 ```
 
 ## How to use my personal theme?
@@ -67,7 +84,7 @@ mkdir -p "$D"
   ./pre-themes/Default\ Item\ Styles\ -\ Schema\ Breeze\ Dark.json \
   ./pre-themes/Highlighting\ *\ -\ Schema\ Breeze\ Dark.json \
   >"$D"/my.theme
-rm -rf ./pre-themes
+rm -r ./pre-themes
 ```
 
 ## Similar Project

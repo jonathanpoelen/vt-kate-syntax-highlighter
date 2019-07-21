@@ -83,7 +83,7 @@ namespace
       s2 += name;
       s2 += infoStyle;
       endNameLen = len2;
-    };
+    }
 
     template<class T1, class T2, class T3>
     void pushGraph(int offset, T1 const& stateStyle, T2 const& graph, T3 const& infoStyle)
@@ -102,7 +102,7 @@ namespace
         _expandLine(s2, n2);
         s2 += s1.rightRef(s1.size() - ps1);
       }
-    };
+    }
 
   private:
     static void _expandLine(QString& s, int n)

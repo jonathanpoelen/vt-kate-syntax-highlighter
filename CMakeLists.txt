@@ -20,6 +20,32 @@ include(KDECMakeSettings)
 include(ECMMarkNonGuiExecutable)
 
 #
+# Compiler flags
+#
+include(compflags)
+set(jln_flags
+  SUGGESTIONS on
+  RTTI off
+  LINKER gold)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Release"
+OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
+  set(jln_flags ${jln_flags}
+    LTO on
+    NATIVE on
+    WHOLE_PROGRAM strip_all)
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug"
+    OR "${CMAKE_BUILD_TYPE}" STREQUAL "")
+  set(jln_flags ${jln_flags}
+    SANITIZERS on
+    STL_DEBUG allow_broken_abi_and_bugged
+    CONTROL_FLOW on
+    DEBUG on)
+endif()
+jln_init_flags(${jln_flags})
+add_library(compflags INTERFACE)
+jln_target_interface(compflags INTERFACE)
+
+#
 # Dependencies
 #
 set(QT_MIN_VERSION "5.4.0")
@@ -118,7 +144,8 @@ add_executable(vt-kate-syntax-highlighter ${vt_syntax_highlighting_srcs})
 # set_target_properties(vt-kate-syntax-highlighter PROPERTIES COMPILE_FLAGS -flto)
 # set_target_properties(vt-kate-syntax-highlighter PROPERTIES LINK_FLAGS -flto)
 ecm_mark_nongui_executable(vt-kate-syntax-highlighter)
-target_link_libraries(vt-kate-syntax-highlighter ${LibSyntaxHighlighting})
+target_link_libraries(vt-kate-syntax-highlighter compflags ${LibSyntaxHighlighting})
+
 
 install(TARGETS vt-kate-syntax-highlighter ${INSTALL_TARGETS_DEFAULT_ARGS})
 
