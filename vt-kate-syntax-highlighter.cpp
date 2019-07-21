@@ -84,6 +84,10 @@ int main(int argc, char **argv)
                                 app.translate("SyntaxHighlightingCLI", "Flush on each line."));
   parser.addOption(unbuffered);
 
+  QCommandLineOption useColor256(QStringList() << QStringLiteral("c") << QStringLiteral("color256"),
+                                app.translate("SyntaxHighlightingCLI", "use 256 colors rather than TrueColor."));
+  parser.addOption(useColor256);
+
 #if BUILD_VT_TRACE
   QCommandLineOption enableNameTrace(QStringList() << QStringLiteral("n") << QStringLiteral("name"),
                                      app.translate("SyntaxHighlightingCLI", "Add the format name on each color."));
@@ -94,7 +98,7 @@ int main(int argc, char **argv)
   parser.addOption(enableRegionTrace);
 
 #if BUILD_VT_TRACE_CONTEXT
-  QCommandLineOption enableContextTrace(QStringList() << QStringLiteral("c") << QStringLiteral("context"),
+  QCommandLineOption enableContextTrace(QStringList() << QStringLiteral("x") << QStringLiteral("context"),
                                        app.translate("SyntaxHighlightingCLI", "Add context of format."));
   parser.addOption(enableContextTrace);
 #endif
@@ -217,6 +221,7 @@ int main(int argc, char **argv)
   highlighter.setInputStream(in);
   highlighter.setOutputStream(out);
   highlighter.setDefinition(def);
+  highlighter.enableColor256(parser.isSet(useColor256));
   highlighter.setTheme(repo.theme(parser.value(themeName)));
   highlighter.useDefaultStyle(parser.isSet(useDefaultStyle));
   highlighter.enableBuffer(!parser.isSet(unbuffered));

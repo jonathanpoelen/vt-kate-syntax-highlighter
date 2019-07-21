@@ -42,6 +42,7 @@ public:
   void setOutputStream(QTextStream & out);
   void useDefaultStyle(bool used = true);
   void enableBuffer(bool isUnbuffered = true);
+  void enableColor256(bool isColor256 = true);
 
   void highlight();
 
@@ -56,6 +57,7 @@ protected:
   QString m_currentLine;
   QByteArray m_defautStyle;
   bool m_isBuffered = true;
+  bool m_isColor256 = false;
 
 private:
   bool m_useDefaultStyle = false;

@@ -56,6 +56,11 @@ void VtHighlighter::enableBuffer(bool isBuffered)
   m_isBuffered = isBuffered;
 }
 
+void VtHighlighter::enableColor256(bool isColor256)
+{
+  m_isColor256 = isColor256;
+}
+
 void VtHighlighter::initStyle()
 {
   if (!m_out)
@@ -70,9 +75,10 @@ void VtHighlighter::initStyle()
     return;
   }
 
-  auto theme = this->theme();
-  auto definition = this->definition();
-  auto formats = definition.formats();
+  const auto isColor256 = IsColor256(m_isColor256);
+  const auto theme = this->theme();
+  const auto definition = this->definition();
+  const auto formats = definition.formats();
 
   auto definitions = definition.includedDefinitions();
   definitions.append(definition);
@@ -83,9 +89,7 @@ void VtHighlighter::initStyle()
   {
     for (auto&& format : d.formats())
     {
-      bool isDefaultTextStyle = format.isDefaultTextStyle(theme);
-
-      if (!isDefaultTextStyle)
+      if (!format.isDefaultTextStyle(theme))
       {
         MiniBuf<64> buf;
 
@@ -93,14 +97,12 @@ void VtHighlighter::initStyle()
 
         if (format.hasTextColor(theme))
         {
-          buf.add("38;2;");
-          buf.addColor(format.textColor(theme));
+          buf.addFgColor(format.textColor(theme), isColor256);
         }
 
         if (format.hasBackgroundColor(theme))
         {
-          buf.add(";48;2;");
-          buf.addColor(format.backgroundColor(theme));
+          buf.addBgColor(format.backgroundColor(theme), isColor256);
         }
 
         if (format.isBold(theme)) buf.add(";1");
@@ -127,10 +129,10 @@ void VtHighlighter::initStyle()
     QColor fg = theme.textColor(Theme::Normal);
     QColor bg = theme.backgroundColor(Theme::Normal);
     defaultStyleBuffer
-      .add("\x1b[0;38;2;")
-      .addColor(fg)
-      .add(";48;2;")
-      .addColor(bg)
+      .add("\x1b[0;")
+      .addFgColor(fg, isColor256)
+      .add(';')
+      .addBgColor(bg, isColor256)
       .add('m')
     ;
   }
@@ -141,7 +143,7 @@ void VtHighlighter::initStyle()
     ;
   }
 
-  m_defautStyle = defaultStyleBuffer.to<QByteArray>();
+  m_defautStyle.append(defaultStyleBuffer.data(), defaultStyleBuffer.size());
 }
 
 void VtHighlighter::highlight()

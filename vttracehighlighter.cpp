@@ -16,6 +16,7 @@
 */
 
 #include "vttracehighlighter.h"
+#include "mini_buf.hpp"
 // #include "vtsyntaxhighlighting_logging.h"
 
 #include <KF5/KSyntaxHighlighting/Definition>
@@ -110,7 +111,8 @@ namespace
     }
   };
 
-  QLatin1String toLatin1(QByteArray const& a) noexcept
+  template<class T>
+  QLatin1String toLatin1(T const& a) noexcept
   {
     return QLatin1String(a.data(), a.size());
   }
@@ -155,16 +157,58 @@ void VtTraceHighlighting::highlight()
 {
   initStyle();
 
-  // TODO
-  // QString infoStyle = QStringLiteral("\x1b[0m");
-  QString infoStyle = QStringLiteral("\x1b[0;48;2;34;34;34m");
-  // QString nameStyle = QStringLiteral("");
-  QString nameStyle = QStringLiteral("\x1b[7;2m");
-  QString idStyle = QStringLiteral("\x1b[7;3;2m");
-  QString graph = QStringLiteral("\x1b[21;23;24;2m|");
-  QString CloseGraph = QStringLiteral("\x1b[21;23;24;1m|");
-  // QString sep = QStringLiteral("\x1b[48;2;66;66;66m────┄┄··\x1b[K\x1b[0m\n");
-  QString sep = QStringLiteral("\x1b[48;2;66;66;66m────····\x1b[K\x1b[0m\n");
+  QString _colorBuf;
+  QStringRef infoStyle;
+  QStringRef nameStyle;
+  QStringRef idStyle;
+  QStringRef graph;
+  QStringRef closeGraph;
+  QStringRef sep;
+
+  {
+    const auto isColor256 = IsColor256(m_isColor256);
+    MiniBuf<256> buf;
+    int namePos = buf
+      .add("\x1b[0;")
+      .addBgColor(QColor(34, 34, 34), isColor256)
+      .add('m')
+      .size()
+    ;
+    int idPos = buf
+      .add("\x1b[7;2m")
+      .size()
+    ;
+    int graphPos = buf
+      .add("\x1b[7;3;2m")
+      .size()
+    ;
+    int closeGraphPos = buf
+      .add("\x1b[21;23;24;2m|")
+      .size()
+    ;
+    int sepPos = buf
+      .add("\x1b[21;23;24;1m|")
+      .size()
+    ;
+    int endPos = buf
+      .add("\x1b[")
+      .addBgColor(QColor(66, 66, 66), isColor256)
+      .add("m────····\x1b[K\x1b[0m\n")
+      .size()
+    ;
+
+    _colorBuf = QString::fromUtf8(buf.data(), buf.size());
+    auto ref = [&](int p1, int p2){
+      return _colorBuf.midRef(p1, p2-p1);
+    };
+
+    infoStyle = ref(0, namePos);
+    nameStyle = ref(namePos, idPos);
+    idStyle = ref(idPos, graphPos);
+    graph = ref(graphPos, closeGraphPos);
+    closeGraph = ref(closeGraphPos, sepPos);
+    sep = ref(sepPos, endPos);
+  }
 
   std::vector<Line> lines;
 
@@ -174,9 +218,6 @@ void VtTraceHighlighting::highlight()
     });
     return (p == end(lines)) ? lines.emplace_back() : *p;
   };
-
-  // TODO show auto-completion
-  // TODO name to top and bottom if region is disabled
 
   QString regionName;
 
@@ -222,7 +263,7 @@ void VtTraceHighlighting::highlight()
       {
         for (Line& line : lines)
         {
-          line.pushGraph(0, QString(), CloseGraph, infoStyle);
+          line.pushGraph(0, QString(), closeGraph, infoStyle);
         }
       }
 
@@ -233,14 +274,14 @@ void VtTraceHighlighting::highlight()
           continue;
         }
 
-        Line * pline;
-        QString* graphStyle;
+        Line* pline;
+        QStringRef graphStyle;
 
         regionName.setNum(info.id);
         if (info.isEnd)
         {
           pline = &lines[m_regions[info.bindIndex].bindIndex];
-          graphStyle = &CloseGraph;
+          graphStyle = closeGraph;
         }
         else
         {
@@ -255,13 +296,13 @@ void VtTraceHighlighting::highlight()
           }
           pline = &selectLine(info.offset);
           pline->pushName(info.offset, QString(), idStyle, regionName, infoStyle);
-          graphStyle = &graph;
+          graphStyle = graph;
           info.bindIndex = pline - lines.data();
         }
 
         for (Line* p = lines.data(); p <= pline; ++p)
         {
-          p->pushGraph(info.offset, QString(), *graphStyle, infoStyle);
+          p->pushGraph(info.offset, QString(), graphStyle, infoStyle);
         }
       }
 
