@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.0)
 # cmake_minimum_required(VERSION 2.8.12)
 
-project(CliSyntaxHighlighting VERSION 0.1.0)
+option(BUILD_VT_TRACE "Build vt-trace options" OFF)
+option(BUILD_VT_TRACE_CONTEXT "Build vt-trace options" OFF)
+
+if (${BUILD_VT_TRACE_CONTEXT} AND ${BUILD_VT_TRACE})
+  project(CliSyntaxHighlighting VERSION 5.0.0)
+else()
+  project(CliSyntaxHighlighting VERSION 0.1.0)
+endif()
 
 # find_package(ECM 5.31.0 REQUIRED NO_MODULE)
 find_package (ECM 0.0.9 REQUIRED NO_MODULE)
@@ -54,9 +61,6 @@ find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED Core)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(".")
-
-option(BUILD_VT_TRACE "Build vt-trace options" OFF)
-option(BUILD_VT_TRACE_CONTEXT "Build vt-trace options" OFF)
 
 set(vt_syntax_highlighting_srcs
   vt-kate-syntax-highlighter.cpp
