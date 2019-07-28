@@ -333,26 +333,10 @@ void VtTraceHighlighting::highlight()
         }
       }
 
-      auto it = lines.begin();
-
-      if (!hasRegion)
+      *m_out << m_defautStyle << m_currentFormatedLine << "\x1b[0m\n" << infoStyle;
+      for (auto const& line: lines)
       {
-        *m_out << infoStyle;
-        for (auto middle = lines.begin() + lines.size()/2; it != middle;)
-        {
-          --middle;
-          *m_out << middle->s2 << "\x1b[K\n" << middle->s1 << "\x1b[K\n";
-        }
-
-        it = lines.begin() + lines.size()/2;
-      }
-
-      *m_out << m_defautStyle << m_currentFormatedLine << "\x1b[0m\n";
-
-      *m_out << infoStyle;
-      for (auto end = lines.end(); it != end; ++it)
-      {
-        *m_out << it->s1 << "\x1b[K\n" << it->s2 << "\x1b[K\n";
+        *m_out << line.s1 << "\x1b[K\n" << line.s2 << "\x1b[K\n";
       }
 
       m_formats.clear();
