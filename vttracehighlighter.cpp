@@ -23,6 +23,7 @@
 #include <KF5/KSyntaxHighlighting/Format>
 #include <KF5/KSyntaxHighlighting/State>
 #include <KF5/KSyntaxHighlighting/Theme>
+#include <KF5/KSyntaxHighlighting/State>
 
 # if BUILD_VT_TRACE_CONTEXT
 # include <ksyntax-highlighting/src/lib/state_p.h>
@@ -122,6 +123,9 @@ struct VtTraceHighlighting::InfoFormat
 {
   QString name;
   int offset;
+#if BUILD_VT_TRACE_CONTEXT
+  int length;
+#endif
   quint16 styleIndex;
 };
 
@@ -150,6 +154,27 @@ void VtTraceHighlighting::enableRegionTrace(bool withRegion)
 void VtTraceHighlighting::enableContextTrace(bool withContext)
 {
   m_enableContextTrace = withContext;
+}
+
+namespace
+{
+  struct SyntaxHighlightingContextCapture : KSyntaxHighlighting::AbstractHighlighter
+  {
+    int m_offset;
+    int m_length;
+    int m_offsetNext;
+    int m_lengthNext;
+
+    void applyFormat(int offset, int length, const KSyntaxHighlighting::Format &/*format*/) override
+    {
+      m_offset = m_offsetNext;
+      m_length = m_lengthNext;
+      m_offsetNext = offset;
+      m_lengthNext = length;
+    }
+
+    using KSyntaxHighlighting::AbstractHighlighter::highlightLine;
+  };
 }
 #endif
 
@@ -220,12 +245,69 @@ void VtTraceHighlighting::highlight()
   };
 
   QString regionName;
+  KSyntaxHighlighting::State state;
+#if BUILD_VT_TRACE_CONTEXT
+  SyntaxHighlightingContextCapture contextCapture;
+  contextCapture.setDefinition(definition());
+#endif
 
   while (!m_in->atEnd())
   {
     m_currentLine = m_in->readLine();
     m_currentFormatedLine.clear();
-    m_state = highlightLine(m_currentLine, m_state);
+#if BUILD_VT_TRACE_CONTEXT
+    auto oldState = state;
+    state = highlightLine(m_currentLine, state);
+
+    if (m_enableContextTrace)
+    {
+      QString context;
+
+      auto stateData = StateData::get(oldState);
+      if (!stateData->isEmpty()) {
+        context += QLatin1Char('[');
+        context += stateData->topContext()->name();
+        context += QLatin1Char(']');
+      }
+
+      m_currentLine += QLatin1Char(' ');
+      for (InfoFormat& info : m_formats)
+      {
+        contextCapture.m_offset = 0;
+        contextCapture.m_length = 0;
+        auto lineFragment = m_currentLine.mid(0, info.offset+ info.length+1);
+        auto newState = contextCapture.highlightLine(lineFragment, oldState);
+
+        if (context.isEmpty())
+        {
+          info.name.insert(0, QStringLiteral("[???]"));
+        }
+        else
+        {
+          if (contextCapture.m_offset != info.offset && contextCapture.m_length != info.length)
+          {
+            context.insert(0, QLatin1Char('~'));
+          }
+          info.name.insert(0, context);
+        }
+
+        context.clear();
+        stateData = StateData::get(newState);
+        if (!stateData->isEmpty()) {
+          context += QLatin1Char('[');
+          context += stateData->topContext()->name();
+          context += QLatin1Char(']');
+        }
+      }
+
+      if (!context.isEmpty() && m_formats.size() > 1)
+      {
+        m_formats.push_back(InfoFormat{context, m_currentLine.size()-1, 0, m_formats.back().styleIndex});
+      }
+    }
+#else
+    state = highlightLine(m_currentLine, state);
+#endif
 
     const bool hasRegion = !m_regions.empty();
 
@@ -364,30 +446,7 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
 #if BUILD_VT_TRACE_CONTEXT
   if (m_enableNameTrace || m_enableContextTrace)
   {
-    auto getName = [&]{
-      if (!m_enableContextTrace) {
-        return format.name();
-      }
-
-      QString name = QStringLiteral("[");
-      if (m_enableContextTrace)
-      {
-        auto stateData = StateData::get(m_state);
-        if (!stateData->isEmpty()) {
-          name += stateData->topContext()->name();
-        }
-      }
-      name += QLatin1Char(']');
-
-      if (m_enableNameTrace)
-      {
-        name += format.name();
-      }
-
-      return name;
-    };
-
-    m_formats.push_back(InfoFormat{getName(), offset, id});
+    m_formats.push_back(InfoFormat{format.name(), offset, length, id});
   }
 #else
   if (m_enableNameTrace)
@@ -406,7 +465,7 @@ void VtTraceHighlighting::applyFormat(int offset, int length, const Format& form
     m_currentFormatedLine += toLatin1(style);
   }
 
-  m_currentFormatedLine += m_currentLine.mid(offset, length);
+  m_currentFormatedLine += m_currentLine.midRef(offset, length);
 
   if (!isDefaultTextStyle)
   {

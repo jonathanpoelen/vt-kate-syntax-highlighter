@@ -19,7 +19,6 @@
 
 #include "vthighlighter.h"
 #include <KF5/KSyntaxHighlighting/FoldingRegion>
-#include <KF5/KSyntaxHighlighting/State>
 
 #include <string>
 #include <vector>
@@ -53,7 +52,6 @@ protected:
   struct InfoRegion;
 
   QString m_currentFormatedLine;
-  KSyntaxHighlighting::State m_state;
   std::vector<InfoFormat> m_formats;
   std::vector<InfoRegion> m_regions;
   bool m_enableNameTrace = false;
