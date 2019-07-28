@@ -26,7 +26,7 @@ make -j2
 
 ### Enable VtTrace
 
-VtTrace is a mode used to debug KF5SyntaxHighlighting syntax files more easily, it is activated with `-DBUILD_VT_TRACE=ON`. To display the current context, add `-DBUILD_VT_TRACE_CONTEXT=1` and make a symbolic link from `ksyntax-highlighting` to the official KF5SyntaxHighlighting sources or clone the repository directly.
+VtTrace is a mode used to debug KF5SyntaxHighlighting syntax files more easily, it is activated with `-DBUILD_VT_TRACE=ON`. To display the current context, add `-DBUILD_VT_TRACE_CONTEXT=ON` and make a symbolic link from `ksyntax-highlighting` to the official KF5SyntaxHighlighting sources or clone the repository directly.
 
 ```bash
 git clone git://anongit.kde.org/syntax-highlighting ksyntax-highlighting
