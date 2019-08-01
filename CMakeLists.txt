@@ -45,7 +45,7 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug"
   set(jln_flags ${jln_flags}
     SANITIZERS on
     STL_DEBUG allow_broken_abi_and_bugged
-    CONTROL_FLOW on
+    # CONTROL_FLOW on # => illegal hardware instruction
     DEBUG on)
 endif()
 jln_init_flags(${jln_flags})
