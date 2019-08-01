@@ -174,6 +174,7 @@ struct MiniBuf
       add(';');
       wc(color.blue());
     }
+    add(';');
 
     return *this;
   }
@@ -205,6 +206,19 @@ struct MiniBuf
     memcpy(m_data + m_pos, sv.data(), sv.size());
     m_pos += int(sv.size());
     return *this;
+  }
+
+  MiniBuf& setFinalStyle()
+  {
+    assert(size());
+    assert(m_data[m_pos-1] == ';');
+    m_data[m_pos-1] = 'm';
+    return *this;
+  }
+
+  void clear()
+  {
+    m_pos = 0;
   }
 
   char const* data() const noexcept

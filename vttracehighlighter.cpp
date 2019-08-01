@@ -196,7 +196,7 @@ void VtTraceHighlighting::highlight()
     int namePos = buf
       .add("\x1b[0;")
       .addBgColor(QColor(34, 34, 34), isColor256)
-      .add('m')
+      .setFinalStyle()
       .size()
     ;
     int idPos = buf

@@ -105,12 +105,19 @@ void VtHighlighter::initStyle()
           buf.addBgColor(format.backgroundColor(theme), isColor256);
         }
 
-        if (format.isBold(theme)) buf.add(";1");
-        if (format.isItalic(theme)) buf.add(";3");
-        if (format.isUnderline(theme)) buf.add(";4");
-        if (format.isStrikeThrough(theme)) buf.add(";9");
+        if (format.isBold(theme)) buf.add("1;");
+        if (format.isItalic(theme)) buf.add("3;");
+        if (format.isUnderline(theme)) buf.add("4;");
+        if (format.isStrikeThrough(theme)) buf.add("9;");
 
-        buf.add('m');
+        if (buf.size() > 2)
+        {
+          buf.setFinalStyle();
+        }
+        else
+        {
+          buf.clear();
+        }
 
         auto id = format.id();
         if (id >= m_styles.size())
@@ -131,7 +138,6 @@ void VtHighlighter::initStyle()
     defaultStyleBuffer
       .add("\x1b[0;")
       .addFgColor(fg, isColor256)
-      .add(';')
       .addBgColor(bg, isColor256)
       .add('m')
     ;
