@@ -139,7 +139,7 @@ void VtHighlighter::initStyle()
       .add("\x1b[0;")
       .addFgColor(fg, isColor256)
       .addBgColor(bg, isColor256)
-      .add('m')
+      .setFinalStyle()
     ;
   }
   else
