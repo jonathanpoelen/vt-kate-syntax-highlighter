@@ -83,8 +83,6 @@ void VtHighlighter::initStyle()
   auto definitions = definition.includedDefinitions();
   definitions.append(definition);
 
-  m_styles.resize(definitions.size() * 10);
-
   for (auto&& d : definitions)
   {
     for (auto&& format : d.formats())
@@ -122,7 +120,8 @@ void VtHighlighter::initStyle()
         auto id = format.id();
         if (id >= m_styles.size())
         {
-          m_styles.resize(std::max(size_t(id), m_styles.size() * 2u));
+          using int_type = decltype(id);
+          m_styles.resize(std::max(int_type(id*2u), int_type(16)));
         }
         m_styles[id].append(buf.data(), buf.size());
       }
