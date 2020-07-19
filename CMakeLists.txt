@@ -1,62 +1,57 @@
 cmake_minimum_required(VERSION 3.0)
-# cmake_minimum_required(VERSION 2.8.12)
 
 option(BUILD_VT_TRACE "Build vt-trace options" OFF)
 option(BUILD_VT_TRACE_CONTEXT "Build vt-trace options" OFF)
 
 if (${BUILD_VT_TRACE_CONTEXT} AND ${BUILD_VT_TRACE})
-  project(CliSyntaxHighlighting VERSION 5.0.0)
+  set(VT_VERSION "5.62.0")
 else()
-  project(CliSyntaxHighlighting VERSION 0.1.0)
+  set(VT_VERSION "1.0.1")
 endif()
 
+project(CliSyntaxHighlighting VERSION ${VT_VERSION})
+
 # find_package(ECM 5.31.0 REQUIRED NO_MODULE)
-find_package (ECM 0.0.9 REQUIRED NO_MODULE)
+find_package (ECM 5.0.0 REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR})
-# if(POLICY CMP0063)
-#     cmake_policy(SET CMP0063 NEW)
-# endif()
+if(POLICY CMP0063)
+  cmake_policy(SET CMP0063 NEW)
+endif()
+
+include(KDEInstallDirs)
+include(KDEFrameworkCompilerSettings NO_POLICY_SCOPE)
+include(KDECMakeSettings)
 
 include(FeatureSummary)
-# include(CMakePackageConfigHelpers)
-include(ECMPoQmTools)
-# include(ECMQtDeclareLoggingCategory)
-include(KDEInstallDirs)
-include(KDECompilerSettings NO_POLICY_SCOPE)
-include(KDECMakeSettings)
 include(ECMMarkNonGuiExecutable)
+# include(CMakePackageConfigHelpers)
+# include(ECMPoQmTools)
+# include(ECMQtDeclareLoggingCategory)
+
+
+# ecm_setup_version(PROJECT
+#     VARIABLE_PREFIX VtSyntaxHighlighting
+#     VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/vtsyntaxhighlighting_version.h"
+#     PACKAGE_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/VtSyntaxHighlightingConfigVersion.cmake"
+# )
 
 #
 # Compiler flags
 #
-include(compflags)
-set(jln_flags
-  SUGGESTIONS on
-  RTTI off
-  LINKER gold)
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Release"
-OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
-  set(jln_flags ${jln_flags}
-    LTO on
-    NATIVE on
-    WHOLE_PROGRAM strip_all)
-elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug"
-    OR "${CMAKE_BUILD_TYPE}" STREQUAL "")
-  set(jln_flags ${jln_flags}
-    SANITIZERS on
-    STL_DEBUG allow_broken_abi_and_bugged
-    # CONTROL_FLOW on # => illegal hardware instruction
-    DEBUG on)
-endif()
-jln_init_flags(${jln_flags})
-add_library(compflags INTERFACE)
+include(jln.cmake)
+jln_init_flags(
+  SUGGESTIONS on RTTI off LINKER gold
+  BUILD_TYPE Release    LTO on CPU native WHOLE_PROGRAM strip_all
+  BUILD_TYPE MinSizeRel LTO on CPU native WHOLE_PROGRAM strip_all
+  BUILD_TYPE Debug      SANITIZERS on DEBUG on STL_DEBUG on
+)
 jln_target_interface(compflags INTERFACE)
 
 #
 # Dependencies
 #
 set(QT_MIN_VERSION "5.4.0")
-find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED Core)
+find_package(Qt5 ${QT_MIN_VERSION} NO_MODULE REQUIRED COMPONENTS Core)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -76,8 +71,10 @@ if(${BUILD_VT_TRACE})
     set(LibSyntaxHighlighting VtSyntaxHighlighting)
     add_compile_definitions(BUILD_VT_TRACE_CONTEXT=1)
 
-    set (KSYNTAX_HIGHLIGHTING_ROOT_PROJECT "ksyntax-highlighting")
-    add_subdirectory(${KSYNTAX_HIGHLIGHTING_ROOT_PROJECT})
+    add_definitions(-DQT_NO_FOREACH)
+    add_definitions(-DQT_DISABLE_DEPRECATED_BEFORE=0x050d00)
+
+    set(KSYNTAX_HIGHLIGHTING_ROOT_PROJECT "ksyntax-highlighting")
 
     include(GenerateExportHeader)
     include(ECMSetupVersion)
@@ -90,9 +87,7 @@ if(${BUILD_VT_TRACE})
       PACKAGE_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/KF5SyntaxHighlightingConfigVersion.cmake"
     )
 
-    set(REQUIRED_QT_VERSION 5.10.0)
-    find_package(Qt5 ${REQUIRED_QT_VERSION} NO_MODULE REQUIRED COMPONENTS Core Network Test)
-    find_package(Qt5 ${REQUIRED_QT_VERSION} NO_MODULE REQUIRED COMPONENTS Gui)
+    find_package(Qt5 ${QT_MIN_VERSION} NO_MODULE REQUIRED COMPONENTS Network Gui)
 
     set (KSYNTAX_HIGHLIGHTING_SRC_LIB_PROJECT
       ${KSYNTAX_HIGHLIGHTING_ROOT_PROJECT}/src/lib)
@@ -117,8 +112,19 @@ if(${BUILD_VT_TRACE})
     ecm_qt_declare_logging_category(KSYNTAX_HIGHLIGHTING_PRIVATE_SRC
       HEADER ksyntaxhighlighting_logging.h
       IDENTIFIER KSyntaxHighlighting::Log
-      CATEGORY_NAME org.kde.ksyntaxhighlighting
+      CATEGORY_NAME kf.syntaxhighlighting
+      OLD_CATEGORY_NAMES org.kde.ksyntaxhighlighting
+      DESCRIPTION "Syntax Highlighting"
+      EXPORT KSYNTAXHIGHLIGHTING
     )
+
+    qt5_add_resources(themes_QRC ${KSYNTAX_HIGHLIGHTING_ROOT_PROJECT}/data/themes/theme-data.qrc)
+    add_library(SyntaxHighlightingData OBJECT ${themes_QRC})
+    set_property(TARGET SyntaxHighlightingData PROPERTY POSITION_INDEPENDENT_CODE 1)
+    if(NOT ${CMAKE_VERSION} VERSION_LESS "3.13.0")
+      target_link_libraries(SyntaxHighlightingData PRIVATE Qt5::Core)
+    endif()
+
     add_library(VtSyntaxHighlighting STATIC ${KSYNTAX_HIGHLIGHTING_PRIVATE_SRC} $<TARGET_OBJECTS:SyntaxHighlightingData>)
     generate_export_header(VtSyntaxHighlighting BASE_NAME KSyntaxHighlighting)
     set_target_properties(VtSyntaxHighlighting PROPERTIES
@@ -126,8 +132,6 @@ if(${BUILD_VT_TRACE})
       SOVERSION ${SyntaxHighlighting_SOVERSION}
       EXPORT_NAME SyntaxHighlighting
     )
-    target_include_directories(VtSyntaxHighlighting INTERFACE "$<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR_KF5}/KSyntaxHighlighting;${KDE_INSTALL_INCLUDEDIR_KF5}>")
-    target_include_directories(VtSyntaxHighlighting PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_BINARY_DIR};>")
     target_link_libraries(VtSyntaxHighlighting LINK_PUBLIC Qt5::Gui LINK_PRIVATE Qt5::Network)
   endif()
 endif()
@@ -145,8 +149,6 @@ endif()
 # )
 
 add_executable(vt-kate-syntax-highlighter ${vt_syntax_highlighting_srcs})
-# set_target_properties(vt-kate-syntax-highlighter PROPERTIES COMPILE_FLAGS -flto)
-# set_target_properties(vt-kate-syntax-highlighter PROPERTIES LINK_FLAGS -flto)
 ecm_mark_nongui_executable(vt-kate-syntax-highlighter)
 target_link_libraries(vt-kate-syntax-highlighter compflags ${LibSyntaxHighlighting})
 

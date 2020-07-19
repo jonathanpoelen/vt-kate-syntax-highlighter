@@ -29,7 +29,7 @@ make -j2
 VtTrace is a mode used to debug KF5SyntaxHighlighting syntax files more easily, it is activated with `-DBUILD_VT_TRACE=ON`. To display the current context, add `-DBUILD_VT_TRACE_CONTEXT=ON` and make a symbolic link from `ksyntax-highlighting` to the official KF5SyntaxHighlighting sources or clone the repository directly.
 
 ```bash
-git clone git://anongit.kde.org/syntax-highlighting ksyntax-highlighting
+git clone https://invent.kde.org/frameworks/syntax-highlighting.git
 ```
 
 ## How to use my personal theme?
@@ -66,7 +66,7 @@ The following commands create a theme from the colors configured in Kate.
 ```
 
 - `${KATE_SYNTAX_HIGHLIGHTING_RC}`: Can be omitted, by default `~/.config/katesyntaxhighlightingrc`.
-- `${HL_THEME}`: A theme in [KSyntaxHighlighter project](https://phabricator.kde.org/source/syntax-highlighting/browse/master/data/themes/).
+- `${HL_THEME}`: A theme in [KSyntaxHighlighter project](https://invent.kde.org/frameworks/syntax-highlighting/-/tree/master/data/themes).
 - `${KDE_DATA_PATH}`: The KDE data directory. Candidats listed by `qtpaths --paths GenericDataLocation` command. Usually `~/.local/share`, configurable with the environment variable `$XDG_DATA_DIRS`.
 
 Note: For renamed the theme, open my.theme, search and replace `"My"` with what you want. (Use `json_pp` to format the source `json_pp < infile > outfile`).
@@ -80,13 +80,9 @@ D=~/game/org.kde.syntax-highlighting/themes/
 mkdir -p "$D"
 ./katesyntaxhighlightingrc2themes.sh
 ./mergetheme.lua \
-  <(wget -O- https://phabricator.kde.org/file/data/rt2qwxjdmc4iq5aq6mid/PHID-FILE-lnzfavt566nzip4qmcsh/breeze-dark.theme) \
+  <(wget -O- https://invent.kde.org/frameworks/syntax-highlighting/-/raw/master/data/themes/breeze-dark.theme) \
   ./pre-themes/Default\ Item\ Styles\ -\ Schema\ Breeze\ Dark.json \
   ./pre-themes/Highlighting\ *\ -\ Schema\ Breeze\ Dark.json \
   >"$D"/my.theme
 rm -r ./pre-themes
 ```
-
-## Similar Project
-
-- libkf5syntaxhighlighting-tools - [kate-syntax-highlighter: HTML rendering](https://phabricator.kde.org/source/syntax-highlighting/browse/master/src/cli/)
